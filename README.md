@@ -1,4 +1,4 @@
-# 🔥 Spectra-NSA: Neural Semantic Architecture
+#  Spectra-NSA: Neural Semantic Architecture
 
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
@@ -335,8 +335,8 @@ Contributions welcome! Please:
 
 For questions, issues, or collaboration:
 - Open an issue on GitHub
-- Email: your.email@example.com
-- Discord: [Your Server Link]
+- Email: daniele.tl.project@gmail.com
+- Discord: nexus_walker_dc
 
 ---
 
