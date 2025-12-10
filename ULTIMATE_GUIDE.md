@@ -302,11 +302,37 @@ python anomalous_embedding_ultimate.py --epochs 1 --mode train
 # Quick 1-epoch test
 ```
 
-### 3. Resume Training (TODO)
-Currently not supported. Plan:
-- Save optimizer state
-- Load and continue
-- Coming in v2.0
+### 3. Gradient Checkpointing (Memory Optimization) ✅
+```bash
+# Enable gradient checkpointing to reduce VRAM usage
+python anomalous_embedding_ultimate.py --mode train --gradient-checkpointing
+
+# Useful for larger models on smaller GPUs
+python anomalous_embedding_ultimate.py --size M700 --gradient-checkpointing --mode train
+
+# Trade-off: ~20% slower training but ~30% less VRAM
+```
+
+### 4. Multi-GPU Training ✅
+```bash
+# Configure Accelerate (first time only)
+accelerate config
+
+# Launch multi-GPU training
+accelerate launch anomalous_embedding_ultimate.py --mode train --epochs 3
+
+# Resume multi-GPU training
+accelerate launch anomalous_embedding_ultimate.py --mode train --resume checkpoints/step-5000.pt
+
+# Multi-GPU with gradient checkpointing
+accelerate launch anomalous_embedding_ultimate.py --mode train --gradient-checkpointing --size M1B
+```
+
+**Benefits**:
+- Automatic data parallelism
+- Scaled effective batch size
+- Synchronized gradients
+- Main process handles checkpointing
 
 ---
 

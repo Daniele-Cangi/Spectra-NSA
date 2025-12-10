@@ -85,6 +85,36 @@ python anomalous_embedding_ultimate.py --size M700 --mode train --epochs 3
 python anomalous_embedding_ultimate.py --size M1B --mode train --epochs 3
 ```
 
+### Resume Training
+
+```bash
+# Resume training from a checkpoint
+python anomalous_embedding_ultimate.py --mode train --resume checkpoints/step-5000.pt
+
+# Resume with different number of epochs
+python anomalous_embedding_ultimate.py --mode train --resume checkpoints/step-5000.pt --epochs 5
+```
+
+### Memory Optimization
+
+```bash
+# Enable gradient checkpointing for lower VRAM usage
+python anomalous_embedding_ultimate.py --mode train --gradient-checkpointing
+
+# Combine with smaller batch size
+python anomalous_embedding_ultimate.py --mode train --gradient-checkpointing --size M700
+```
+
+### Multi-GPU Training
+
+```bash
+# Launch with accelerate for multi-GPU training
+accelerate launch anomalous_embedding_ultimate.py --mode train --epochs 3
+
+# Configure accelerate (first time only)
+accelerate config
+```
+
 ### Ablation Studies
 
 ```bash
@@ -133,6 +163,9 @@ python anomalous_embedding_ultimate.py \
 - **Temperature Scheduling**: Cosine decay (0.07→0.05)
 - **Gradient Accumulation**: Effective batch size 64
 - **Mixed Precision**: FP16 support (currently disabled for debugging)
+- **Gradient Checkpointing**: Memory-efficient training for larger models
+- **Resume Training**: Full checkpoint restoration with RNG states
+- **Multi-GPU Support**: Distributed training via Accelerate
 - **Early Stopping**: Configurable patience (default: disabled)
 - **Auto-backup**: Google Drive sync every 6 checkpoints
 
@@ -295,7 +328,7 @@ limitations under the License.
 
 ## ⚠️ Disclaimer
 
-**ALPHA SOFTWARE**: This architecture is experimental and under active development. 
+**ALPHA SOFTWARE**: This architecture is experimental and under active development.
 
 - ✅ **Use for**: Research, experimentation, benchmarking
 - ⚠️ **Not recommended for**: Production systems without extensive testing
@@ -306,8 +339,9 @@ limitations under the License.
 - Core architecture: **Stable**
 - Training pipeline: **Stable**
 - Evaluation suite: **Stable**
-- Multi-GPU support: **In development**
-- Gradient checkpointing: **Planned**
+- Resume training: **Implemented** ✅
+- Gradient checkpointing: **Implemented** ✅
+- Multi-GPU support: **Implemented** ✅
 - Mixed precision (fp16): **Disabled for debugging**
 
 ---

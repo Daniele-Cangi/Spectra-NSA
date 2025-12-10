@@ -70,7 +70,7 @@ def set_seed(seed: int = 42):
 class Config:
     # Model size
     size: str = "M456"
-    
+
     # Tokenizer
     tokenizer_name: str = "bert-base-uncased"
     max_length: int = 192       # meno token → meno SxS in attention
@@ -83,6 +83,7 @@ class Config:
     num_heads: int = 16
     ff_mult: int = 4
     dropout: float = 0.1
+    gradient_checkpointing: bool = False  # Enable gradient checkpointing for memory savings
 
     # Spectral attention
     use_spectral: bool = True
@@ -355,28 +356,39 @@ class CustomEncoder(nn.Module):
         self.layers = nn.ModuleList([EncoderBlock(cfg) for _ in range(cfg.num_layers)])
         self.ln = nn.LayerNorm(cfg.hidden_size)
         self.pooling = cfg.pooling
+        self.gradient_checkpointing = cfg.gradient_checkpointing
 
     def forward(self, input_ids: torch.Tensor, attention_mask: Optional[torch.Tensor]):
         B, S = input_ids.shape
         pos = torch.arange(S, device=input_ids.device).unsqueeze(0).expand(B, S)
         h = self.tok_emb(input_ids) + self.pos_emb(pos)
         h = self.drop(h)
-        
+
         attn_mask_add = None
         if attention_mask is not None:
             attn_mask_add = (1.0 - attention_mask[:, None, None, :].float()) * -10000.0
-            
-        for blk in self.layers:
-            h = blk(h, attn_mask_add)
-            
+
+        # Use gradient checkpointing if enabled and in training mode
+        if self.gradient_checkpointing and self.training:
+            for blk in self.layers:
+                h = torch.utils.checkpoint.checkpoint(
+                    blk,
+                    h,
+                    attn_mask_add,
+                    use_reentrant=False
+                )
+        else:
+            for blk in self.layers:
+                h = blk(h, attn_mask_add)
+
         h = self.ln(h)
-        
+
         if self.pooling == "cls":
             pooled = h[:, 0]
         else:
             m = attention_mask.unsqueeze(-1)
             pooled = (h * m).sum(1) / m.sum(1).clamp(min=1e-9)
-            
+
         return {"last_hidden_state": h, "pooled": pooled}
 
 
@@ -799,9 +811,16 @@ class Trainer:
         self.val_loader = val_loader
         self.tokenizer = tokenizer
         
+        # Multi-GPU distributed training support
+        # Accelerator automatically handles:
+        # - Multiple GPUs via DataParallel or DistributedDataParallel
+        # - Mixed precision training
+        # - Gradient accumulation
         self.acc = Accelerator(
             mixed_precision='fp16' if cfg.fp16 else 'no',
-            gradient_accumulation_steps=cfg.grad_accum
+            gradient_accumulation_steps=cfg.grad_accum,
+            # split_batches=True,  # Uncomment for very large batch sizes
+            # dispatch_batches=False,  # Uncomment for debugging
         )
         
         self.opt = torch.optim.AdamW(
@@ -835,6 +854,7 @@ class Trainer:
         )
         
         self.global_step = 0
+        self.current_epoch = 0
         self.best_sts = 0.0
         self.best_val_loss = float('inf')
         self.patience_counter = 0
@@ -878,24 +898,35 @@ class Trainer:
         print("ANOMALOUS EMBEDDING - ULTIMATE FINAL")
         print("="*80)
         print(f"Model: {self.cfg.size} | H={self.cfg.hidden_size} L={self.cfg.num_layers} A={self.cfg.num_heads}")
-        
+
         n_params = sum(p.numel() for p in self.model.parameters())
         est_params = estimate_params(self.cfg.vocab_size, self.cfg.hidden_size, self.cfg.num_layers,
                                      self.cfg.spectral_dim, self.cfg.max_positions)
         print(f"Params: {n_params/1e6:.1f}M (estimated: {est_params/1e6:.1f}M)")
-        
+
+        # Multi-GPU info
+        num_processes = self.acc.num_processes
+        device_info = f"Device: {self.acc.device}"
+        if num_processes > 1:
+            device_info += f" | Multi-GPU: {num_processes} GPUs (Distributed)"
+        print(f"\n{device_info}")
+
         print(f"\nComponents:")
         print(f"  Spectral:          {'✓' if self.cfg.use_spectral else '✗'}")
         print(f"  Anchor64:          {'✓' if self.cfg.enable_anchor64 else '✗'}")
         print(f"  Bridge:            {'✓' if self.cfg.enable_bridge else '✗'}")
         print(f"  Matryoshka:        {'✓' if self.cfg.enable_matryoshka else '✗'}")
         print(f"  Angular Alignment: {'✓' if self.cfg.enable_matry_angular else '✗'}")
-        
+        print(f"  Gradient Checkpoint: {'✓' if self.cfg.gradient_checkpointing else '✗'}")
+
         print(f"\nTraining:")
         print(f"  Epochs: {self.cfg.epochs}")
         print(f"  Batch: {self.cfg.batch_train} x {self.cfg.grad_accum} = {self.cfg.batch_train * self.cfg.grad_accum}")
+        if num_processes > 1:
+            print(f"  Effective Batch (Multi-GPU): {self.cfg.batch_train * self.cfg.grad_accum * num_processes}")
         print(f"  LR: {self.cfg.lr}")
         print(f"  Temperature: {self.cfg.temperature_start} → {self.cfg.temperature_end}")
+        print(f"  Mixed Precision: {'FP16' if self.cfg.fp16 else 'FP32'}")
         print("="*80 + "\n")
     
     def _step(self, batch):
@@ -934,8 +965,10 @@ class Trainer:
     
     def train(self):
         self.model.train()
-        
-        for ep in range(self.cfg.epochs):
+
+        start_epoch = self.current_epoch
+        for ep in range(start_epoch, self.cfg.epochs):
+            self.current_epoch = ep
             epoch_loss = 0.0
             t0 = time.time()
             
@@ -1061,7 +1094,7 @@ class Trainer:
     def save_ckpt(self, name: str):
         if not self.acc.is_main_process:
             return
-        
+
         path = os.path.join(self.cfg.save_dir, f"{name}.pt")
         payload = {
             "model": self.acc.unwrap_model(self.model).state_dict(),
@@ -1070,11 +1103,20 @@ class Trainer:
             "cfg": asdict(self.cfg),
             "step": self.global_step,
             "best_sts": self.best_sts,
-            "best_val_loss": self.best_val_loss
+            "best_val_loss": self.best_val_loss,
+            "epoch": self.current_epoch,
+            "checkpoint_counter": self.checkpoint_counter,
+            "patience_counter": self.patience_counter,
+            "rng_state": {
+                "python": random.getstate(),
+                "numpy": np.random.get_state(),
+                "torch": torch.get_rng_state(),
+                "torch_cuda": torch.cuda.get_rng_state_all() if torch.cuda.is_available() else None
+            }
         }
         torch.save(payload, path)
         print(f"[CHECKPOINT] Saved → {path}")
-        
+
         # Backup automatico su Google Drive ogni 6 checkpoint
         self.checkpoint_counter += 1
         if self.enable_drive_backup and self.checkpoint_counter % 6 == 0:
@@ -1085,6 +1127,46 @@ class Trainer:
                 print(f"[DRIVE BACKUP] Checkpoint #{self.checkpoint_counter} → {backup_path}")
             except Exception as e:
                 print(f"[DRIVE BACKUP] Failed: {e}")
+
+    def load_checkpoint(self, checkpoint_path: str):
+        """Load checkpoint and resume training state"""
+        if not os.path.exists(checkpoint_path):
+            raise FileNotFoundError(f"Checkpoint not found: {checkpoint_path}")
+
+        print(f"[RESUME] Loading checkpoint from {checkpoint_path}")
+        ckpt = torch.load(checkpoint_path, map_location=self.acc.device, weights_only=False)
+
+        # Load model state
+        self.acc.unwrap_model(self.model).load_state_dict(ckpt["model"])
+        print(f"[RESUME] ✓ Model state loaded")
+
+        # Load optimizer and scheduler
+        self.opt.load_state_dict(ckpt["opt"])
+        self.lr_sched.load_state_dict(ckpt["lr_sched"])
+        print(f"[RESUME] ✓ Optimizer and scheduler loaded")
+
+        # Load training state
+        self.global_step = ckpt.get("step", 0)
+        self.best_sts = ckpt.get("best_sts", 0.0)
+        self.best_val_loss = ckpt.get("best_val_loss", float('inf'))
+        self.current_epoch = ckpt.get("epoch", 0)
+        self.checkpoint_counter = ckpt.get("checkpoint_counter", 0)
+        self.patience_counter = ckpt.get("patience_counter", 0)
+        print(f"[RESUME] ✓ Training state: step={self.global_step}, epoch={self.current_epoch}, best_sts={self.best_sts:.4f}")
+
+        # Restore RNG states for reproducibility
+        if "rng_state" in ckpt:
+            try:
+                random.setstate(ckpt["rng_state"]["python"])
+                np.random.set_state(ckpt["rng_state"]["numpy"])
+                torch.set_rng_state(ckpt["rng_state"]["torch"])
+                if torch.cuda.is_available() and ckpt["rng_state"]["torch_cuda"] is not None:
+                    torch.cuda.set_rng_state_all(ckpt["rng_state"]["torch_cuda"])
+                print(f"[RESUME] ✓ RNG states restored")
+            except Exception as e:
+                print(f"[RESUME] ⚠️  Could not restore RNG states: {e}")
+
+        print(f"[RESUME] Resume training from epoch {self.current_epoch+1}, step {self.global_step}\n")
 
 
 # ============================================================
@@ -1121,8 +1203,12 @@ def main(argv: Optional[List[str]] = None):
     p.add_argument("--use_wandb", type=int, default=None)
     p.add_argument("--texts", nargs="*", default=None)
     p.add_argument("--checkpoint", type=str, default=None)
+    p.add_argument("--resume", type=str, default=None, help="Resume training from checkpoint path")
     p.add_argument("--seed", type=int, default=None)
-    
+
+    # Memory optimization
+    p.add_argument("--gradient-checkpointing", action="store_true", help="Enable gradient checkpointing for memory savings")
+
     # Granular component toggles
     p.add_argument("--no-spectral", action="store_true", help="Disable spectral attention")
     p.add_argument("--no-anchor64", action="store_true", help="Disable anchor64 head")
@@ -1153,6 +1239,10 @@ def main(argv: Optional[List[str]] = None):
         cfg.enable_matryoshka = False
     if args.no_angular:
         cfg.enable_matry_angular = False
+
+    # Apply memory optimizations
+    if args.gradient_checkpointing:
+        cfg.gradient_checkpointing = True
     
     # Tokenizer
     tokenizer = AutoTokenizer.from_pretrained(cfg.tokenizer_name, use_fast=True)
@@ -1185,7 +1275,7 @@ def main(argv: Optional[List[str]] = None):
     # Load checkpoint if provided
     if args.checkpoint:
         print(f"[LOAD] Loading checkpoint: {args.checkpoint}")
-        ckpt = torch.load(args.checkpoint, map_location=dev)
+        ckpt = torch.load(args.checkpoint, map_location=dev, weights_only=False)
         model.load_state_dict(ckpt["model"])
         print(f"[LOAD] Loaded from step {ckpt.get('step', 0)}")
     
@@ -1214,6 +1304,11 @@ def main(argv: Optional[List[str]] = None):
     # Training mode
     print("Starting training…")
     trainer = Trainer(cfg, model, train_loader, val_loader, tokenizer)
+
+    # Resume from checkpoint if specified
+    if args.resume:
+        trainer.load_checkpoint(args.resume)
+
     trainer.train()
     
     # Post-training evaluation

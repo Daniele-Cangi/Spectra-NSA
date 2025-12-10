@@ -5,6 +5,44 @@ All notable changes to Spectra-NSA will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0-alpha] - 2025-12-10 - **Production Optimizations**
+
+### Added ✨
+
+#### Resume Training
+- **Full checkpoint restoration** - Save and restore complete training state
+- **RNG state preservation** - Reproducible training with Python, NumPy, and PyTorch RNG states
+- **Automatic state recovery** - Restores epoch, step, best metrics, and patience counters
+- **CLI support** - `--resume` flag to continue training from any checkpoint
+
+#### Gradient Checkpointing
+- **Memory-efficient training** - Trade compute for memory to train larger models
+- **Configurable via CLI** - `--gradient-checkpointing` flag
+- **Automatic activation** - Only active during training, disabled during evaluation
+- **Compatible with all model sizes** - Enables M700/M1B training on smaller GPUs
+
+#### Multi-GPU Support
+- **Distributed training** - Full support via Hugging Face Accelerate
+- **Automatic scaling** - Effective batch size scales with number of GPUs
+- **Process coordination** - Main process handles checkpointing and logging
+- **Launch integration** - Use `accelerate launch` for multi-GPU training
+- **Device info display** - Shows number of GPUs and distributed status
+
+### Changed 🔄
+
+- **Checkpoint format** - Now includes epoch, patience counter, and RNG states
+- **Training loop** - Support for starting from arbitrary epoch (resume capability)
+- **Config display** - Shows gradient checkpointing status and multi-GPU info
+- **Effective batch size** - Displays per-GPU and total batch sizes in multi-GPU mode
+
+### Documentation 📚
+
+- Updated **README.md** with resume training examples
+- Added **Multi-GPU training** section with Accelerate usage
+- Added **Memory optimization** section with gradient checkpointing
+- Updated **Current Status** to reflect implemented features
+- Updated **Training Features** list with new capabilities
+
 ## [0.1.0-alpha] - 2025-11-15 - **Spectra-NSA Launch**
 
 ### Added ✨
