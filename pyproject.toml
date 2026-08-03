@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "spectra-nsa"
+version = "0.3.0.dev0"
+description = "Experimental heterogeneous-mixer embedding research"
+requires-python = ">=3.10"
+dependencies = ["torch>=2.0"]
+
+[project.optional-dependencies]
+dev = ["pytest>=7.0"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
