@@ -158,6 +158,23 @@ spectra-phase0-source-mine pack \
   --author-slots 3 --axis-target 3 --seed 223607
 ```
 
+Convert the validated kit into three isolated handoff bundles:
+
+```bash
+spectra-phase0-source-mine prepare-distribution \
+  --kit-dir source-seed-kit \
+  --output-dir source-seed-distribution \
+  --protocol-version human-frame-v2-source-dry-run
+```
+
+This stage verifies every packet against the source-kit manifest, assigns one
+cryptographically random pseudonymous author hash per slot, requires exactly
+one case per axis in every bundle, and scans the public rows for private
+provenance keys. Each ZIP contains only `source-seeds.jsonl` and
+`INSTRUCTIONS.md`. The separate `_coordinator-private-assignments.json` must be
+completed with the real participant mapping locally and must never be sent to
+authors or reviewers. Send exactly one ZIP to each independent author.
+
 Before distribution, run the existing `draft-status` command and require the
 expected twelve incomplete example cases, four per packet and three per axis.
 After author return, require `ready_for_assembly: true`, then use the unchanged

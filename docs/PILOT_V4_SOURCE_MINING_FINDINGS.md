@@ -108,7 +108,9 @@ human reviewers can recover naturally occurring change/preservation pairs.
 
 The source-seeded workflow is worth continuing because it removes blank-page
 authoring and injects natural syntax while preserving a human evidentiary lock.
-The next valid action is distribution of the twelve seed-only rehearsal packets
-to three independent human authors. Automatic triplets should remain a separate
-research branch until a genuinely independent verifier and a much larger,
-predeclared sample show acceptable axis-specific reliability.
+The twelve seed-only cases are packaged into three isolated handoff bundles,
+each with a random pseudonymous author identifier and one case per axis. The
+next valid action is assigning those bundles to three independent human
+authors. Automatic triplets should remain a separate research branch until a
+genuinely independent verifier and a much larger, predeclared sample show
+acceptable axis-specific reliability.

@@ -7,9 +7,11 @@ import html
 import json
 import random
 import re
+import secrets
 import time
 import urllib.parse
 import urllib.request
+import zipfile
 from collections import Counter, defaultdict
 from dataclasses import dataclass
 from datetime import date, datetime, time as datetime_time, timezone
@@ -1384,6 +1386,197 @@ def pack_run(
     )
 
 
+def _nested_keys(value: Any) -> set[str]:
+    if isinstance(value, Mapping):
+        keys = set(map(str, value))
+        for item in value.values():
+            keys.update(_nested_keys(item))
+        return keys
+    if isinstance(value, (list, tuple)):
+        keys: set[str] = set()
+        for item in value:
+            keys.update(_nested_keys(item))
+        return keys
+    return set()
+
+
+def _distribution_instructions(slot: str, protocol_version: str) -> str:
+    return f"""# Human source-seed rehearsal — {slot}
+
+Protocol: `{protocol_version}`.
+
+You have four natural-text cases, one for each semantic axis. For every case:
+
+1. keep `context_text`, `base_text`, `target_axis`, `source_seed_id`, and the
+   assigned `author_id_hash` unchanged;
+2. independently write the critical, control, and invariant transformed texts
+   under the supplied `axis_authoring_contract`;
+3. replace every `<human-...>` value with a specific natural-language value;
+4. remove `example_only` and set `draft_status` to `complete` only after the
+   case is fully finished;
+5. return only `source-seeds.jsonl` to the coordinator.
+
+Do not use an LLM, machine paraphraser, synthetic Pilot v4 text, model score, or
+model output. Do not coordinate wording with another author. If a seed is
+unclear or cannot support a single-axis triplet, leave it incomplete and report
+the problem instead of repairing the query or base text.
+
+The excerpt's source attribution is held by the coordinator for delayed
+license-compliant handoff after the blind task. Do not redistribute the packet.
+No rehearsal case can enter the locked corpus or be evaluated by a model.
+"""
+
+
+def prepare_distribution(
+    kit_dir: Path,
+    output_dir: Path,
+    *,
+    protocol_version: str,
+    overwrite: bool,
+) -> tuple[Path, ...]:
+    kit_dir = kit_dir.resolve()
+    output_dir = output_dir.resolve()
+    manifest_path = kit_dir / "source-seed-manifest.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    if manifest.get("mode") != "seed-only":
+        raise ValueError("distribution requires a seed-only kit")
+    if manifest.get("protocol_version") != protocol_version:
+        raise ValueError("distribution protocol does not match the source kit")
+    if manifest.get("machine_generated") is not False:
+        raise ValueError("machine-generated kits cannot be distributed to authors")
+    if manifest.get("human_transformations_required") is not True:
+        raise ValueError("source kit does not require human transformations")
+    if manifest.get("model_evaluation_forbidden") is not True:
+        raise ValueError("source kit is missing the model-evaluation prohibition")
+
+    packet_hashes = manifest.get("packet_sha256")
+    if not isinstance(packet_hashes, Mapping) or not packet_hashes:
+        raise ValueError("source kit manifest has no packet hashes")
+    packet_names = tuple(sorted(map(str, packet_hashes)))
+    if any(
+        re.fullmatch(r"author-slot-\d{2}\.source-seeds\.jsonl", name) is None
+        for name in packet_names
+    ):
+        raise ValueError("source kit manifest contains an unsafe packet name")
+    packet_paths = tuple(kit_dir / name for name in packet_names)
+    if any(_sha256_file(path) != packet_hashes[path.name] for path in packet_paths):
+        raise ValueError("source author packet hash does not match its manifest")
+
+    zip_paths = tuple(
+        output_dir / f"{path.name.removesuffix('.source-seeds.jsonl')}.zip"
+        for path in packet_paths
+    )
+    assignment_path = output_dir / "_coordinator-private-assignments.json"
+    distribution_manifest_path = output_dir / "distribution-manifest.json"
+    targets = (*zip_paths, assignment_path, distribution_manifest_path)
+    existing = [path for path in targets if path.exists()]
+    if existing and not overwrite:
+        raise FileExistsError(f"refusing to overwrite: {', '.join(map(str, existing))}")
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    forbidden = {
+        "attribution",
+        "canonical_url",
+        "confidence",
+        "inference_proposal",
+        "main_proposition",
+        "proposal_id",
+        "source_id",
+    }
+    assignments = []
+    bundle_rows: list[dict[str, Any]] = []
+    author_hashes = set()
+    for packet_path, zip_path in zip(packet_paths, zip_paths):
+        rows = _read_jsonl(packet_path)
+        slot_match = re.fullmatch(r"author-slot-(\d{2})\.source-seeds\.jsonl", packet_path.name)
+        if slot_match is None:
+            raise ValueError(f"unexpected author packet name: {packet_path.name}")
+        slot = f"author-slot-{slot_match.group(1)}"
+        author_hash = f"sha256:{hashlib.sha256(secrets.token_bytes(32)).hexdigest()}"
+        if author_hash in author_hashes:
+            raise RuntimeError("random pseudonymous author identifier collision")
+        author_hashes.add(author_hash)
+
+        assigned_rows = []
+        axes = Counter()
+        for row in rows:
+            if row.get("collection_protocol") != protocol_version:
+                raise ValueError(f"{slot}: row protocol does not match distribution")
+            if row.get("example_only") is not True or row.get("draft_status") != "incomplete":
+                raise ValueError(f"{slot}: source seed is not fail-closed")
+            if row.get("author_id_hash") != "sha256:replace-with-64-lowercase-hex-digits":
+                raise ValueError(f"{slot}: author hash was assigned before handoff")
+            leaked = _nested_keys(row) & forbidden
+            if leaked:
+                raise ValueError(f"{slot}: public seed leaks private keys: {sorted(leaked)}")
+            assigned = dict(row)
+            assigned["author_id_hash"] = author_hash
+            assigned_rows.append(assigned)
+            axes[str(assigned["target_axis"])] += 1
+        if set(axes) != SUPPORTED_AXES or any(axes[axis] != 1 for axis in SUPPORTED_AXES):
+            raise ValueError(f"{slot}: distribution bundle must contain one case per axis")
+
+        packet_text = "".join(
+            json.dumps(row, sort_keys=True) + "\n" for row in assigned_rows
+        )
+        instructions = _distribution_instructions(slot, protocol_version)
+        temporary = zip_path.with_name(f"{zip_path.name}.tmp")
+        with zipfile.ZipFile(
+            temporary, "w", compression=zipfile.ZIP_DEFLATED
+        ) as archive:
+            archive.writestr("source-seeds.jsonl", packet_text)
+            archive.writestr("INSTRUCTIONS.md", instructions)
+        temporary.replace(zip_path)
+        assignments.append(
+            {
+                "slot": slot,
+                "author_id_hash": author_hash,
+                "private_human_identity": "<coordinator-fill-and-store-privately>",
+                "bundle": zip_path.name,
+            }
+        )
+        bundle_rows.append(
+            {
+                "slot": slot,
+                "bundle": zip_path.name,
+                "bundle_sha256": _sha256_file(zip_path),
+                "case_count": len(assigned_rows),
+                "axis_counts": dict(sorted(axes.items())),
+            }
+        )
+
+    _write_json(
+        assignment_path,
+        {
+            "schema_version": SCHEMA_VERSION,
+            "created_utc": _utc_now(),
+            "warning": (
+                "PRIVATE: fill identities locally; never send this file to "
+                "authors or reviewers"
+            ),
+            "assignments": assignments,
+        },
+    )
+    _write_json(
+        distribution_manifest_path,
+        {
+            "schema_version": SCHEMA_VERSION,
+            "created_utc": _utc_now(),
+            "protocol_version": protocol_version,
+            "source_kit_manifest_sha256": _sha256_file(manifest_path),
+            "bundle_count": len(zip_paths),
+            "case_count": sum(row["case_count"] for row in bundle_rows),
+            "human_authorship_required": True,
+            "machine_generated": False,
+            "development_only": True,
+            "claim_eligible": False,
+            "model_evaluation_forbidden": True,
+            "bundles": bundle_rows,
+        },
+    )
+    return (*zip_paths, assignment_path, distribution_manifest_path)
+
+
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Mine natural public text into inference-assisted frame seeds."
@@ -1430,6 +1623,12 @@ def _parser() -> argparse.ArgumentParser:
     pack.add_argument("--axis-target", type=int, default=3)
     pack.add_argument("--seed", type=int, default=223607)
     pack.add_argument("--overwrite", action="store_true")
+
+    distribute = commands.add_parser("prepare-distribution")
+    distribute.add_argument("--kit-dir", type=Path, required=True)
+    distribute.add_argument("--output-dir", type=Path, required=True)
+    distribute.add_argument("--protocol-version", required=True)
+    distribute.add_argument("--overwrite", action="store_true")
     return parser
 
 
@@ -1468,7 +1667,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             raise FileExistsError(f"refusing to overwrite: {args.output}")
         _write_json(args.output, report)
         outputs = (args.output.resolve(),)
-    else:
+    elif args.command == "pack":
         outputs = pack_run(
             candidates_path=args.candidates,
             mining_manifest=args.mining_manifest,
@@ -1478,6 +1677,13 @@ def main(argv: Sequence[str] | None = None) -> int:
             author_slots=args.author_slots,
             axis_target=args.axis_target,
             seed=args.seed,
+            overwrite=args.overwrite,
+        )
+    else:
+        outputs = prepare_distribution(
+            args.kit_dir,
+            args.output_dir,
+            protocol_version=args.protocol_version,
             overwrite=args.overwrite,
         )
     for output in outputs:

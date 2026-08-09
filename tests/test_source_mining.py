@@ -1,5 +1,7 @@
 import hashlib
 import json
+import re
+import zipfile
 
 import pytest
 
@@ -11,6 +13,7 @@ from experiments.source_mining import (
     StackExchangeAdapter,
     mine_sources,
     pack_candidates,
+    prepare_distribution,
     source_rejection_reason,
 )
 
@@ -343,3 +346,101 @@ def test_auto_proposals_are_machine_marked_and_rejected_by_human_loader(
     assert all(row["claim_eligible"] is False for row in rows)
     with pytest.raises(ValueError, match="machine-generated"):
         load_drafts(path, protocol_version="development-auto-v1")
+
+
+def test_distribution_bundles_assign_distinct_authors_without_private_data(
+    tmp_path,
+) -> None:
+    sources, proposals = _balanced_candidates()
+    candidates = [
+        MinedCandidate(f"candidate-{index}", source, proposal)
+        for index, (source, proposal) in enumerate(zip(sources, proposals))
+    ]
+    kit = tmp_path / "kit"
+    pack_candidates(
+        candidates,
+        kit,
+        mode="seed-only",
+        protocol_version="human-frame-v2-source-dry-run",
+        author_slots=3,
+        axis_target=3,
+        seed=17,
+        inference_identity={"provider": "offline-mock"},
+        overwrite=False,
+    )
+
+    outputs = prepare_distribution(
+        kit,
+        tmp_path / "distribution",
+        protocol_version="human-frame-v2-source-dry-run",
+        overwrite=False,
+    )
+
+    assert len(outputs) == 5
+    bundles = sorted((tmp_path / "distribution").glob("author-slot-*.zip"))
+    assert len(bundles) == 3
+    author_hashes = set()
+    for bundle in bundles:
+        with zipfile.ZipFile(bundle) as archive:
+            assert set(archive.namelist()) == {
+                "INSTRUCTIONS.md",
+                "source-seeds.jsonl",
+            }
+            assert "coordinator" not in " ".join(archive.namelist()).lower()
+            rows = [
+                json.loads(line)
+                for line in archive.read("source-seeds.jsonl")
+                .decode("utf-8")
+                .splitlines()
+            ]
+        assert len(rows) == 4
+        assert {row["target_axis"] for row in rows} == set(AXES)
+        assert len({row["author_id_hash"] for row in rows}) == 1
+        author_hash = rows[0]["author_id_hash"]
+        assert re.fullmatch(r"sha256:[0-9a-f]{64}", author_hash)
+        author_hashes.add(author_hash)
+        assert all("attribution" not in _nested_keys(row) for row in rows)
+        assert all("canonical_url" not in _nested_keys(row) for row in rows)
+    assert len(author_hashes) == 3
+
+    private = json.loads(
+        (tmp_path / "distribution" / "_coordinator-private-assignments.json")
+        .read_text()
+    )
+    assert len(private["assignments"]) == 3
+    manifest = json.loads(
+        (tmp_path / "distribution" / "distribution-manifest.json").read_text()
+    )
+    assert manifest["bundle_count"] == 3
+    assert manifest["case_count"] == 12
+    assert manifest["model_evaluation_forbidden"] is True
+
+
+def test_distribution_refuses_a_tampered_source_packet(tmp_path) -> None:
+    sources, proposals = _balanced_candidates()
+    candidates = [
+        MinedCandidate(f"candidate-{index}", source, proposal)
+        for index, (source, proposal) in enumerate(zip(sources, proposals))
+    ]
+    kit = tmp_path / "kit"
+    pack_candidates(
+        candidates,
+        kit,
+        mode="seed-only",
+        protocol_version="human-frame-v2-source-dry-run",
+        author_slots=3,
+        axis_target=3,
+        seed=19,
+        inference_identity={"provider": "offline-mock"},
+        overwrite=False,
+    )
+    packet = kit / "author-slot-01.source-seeds.jsonl"
+    packet.write_text(packet.read_text() + "\n", encoding="utf-8")
+
+    with pytest.raises(ValueError, match="hash does not match"):
+        prepare_distribution(
+            kit,
+            tmp_path / "distribution",
+            protocol_version="human-frame-v2-source-dry-run",
+            overwrite=False,
+        )
