@@ -26,6 +26,7 @@ REQUIRED_REVIEWERS = 2
 DRY_RUN_AUTHOR_SLOTS = 3
 DRY_RUN_SOURCE_GROUPS = ("institutional", "dialogue", "narrative")
 _AXIS_ORDER = ("relation", "direction", "scope", "modality")
+_PLACEHOLDER_PREFIXES = ("<replace-", "sha256:replace-")
 _HASH_ID_PATTERN = re.compile(r"sha256:[0-9a-f]{64}\Z")
 _LOCAL_ID_PATTERN = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]{2,95}\Z")
 
@@ -80,6 +81,17 @@ def _write_jsonl(path: Path, rows: Sequence[Mapping[str, Any]]) -> None:
     with temporary.open("w", encoding="utf-8", newline="\n") as handle:
         for row in rows:
             handle.write(json.dumps(dict(row), sort_keys=True) + "\n")
+    temporary.replace(path)
+
+
+def _write_json(path: Path, value: Mapping[str, Any]) -> None:
+    path = path.resolve()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = path.with_name(f"{path.name}.tmp")
+    temporary.write_text(
+        json.dumps(dict(value), indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
     temporary.replace(path)
 
 
@@ -151,6 +163,19 @@ class HumanDraftItem:
         self.semantic_change.validate_relation(
             self.semantic_change.expected_relation
         )
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "annotation_id": self.annotation_id,
+            "axis": self.axis.value,
+            "role": self.role,
+            "transformed_text": self.transformed_text,
+            "frame_id": self.frame_id,
+            "query_relevant": self.query_relevant,
+            "value_changed": self.value_changed,
+            "before_value": self.before_value,
+            "after_value": self.after_value,
+        }
 
 
 @dataclass(frozen=True)
@@ -226,6 +251,23 @@ class HumanDraft:
         if len(self.items) != len(REQUIRED_ROLES):
             raise ValueError(f"{self.case_id}: duplicate target-axis role")
 
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "schema_version": COLLECTION_SCHEMA_VERSION,
+            "draft_status": "complete",
+            "case_id": self.case_id,
+            "author_id_hash": self.author_id_hash,
+            "source_group": self.source_group,
+            "collection_protocol": self.collection_protocol,
+            "language": self.language,
+            "context_text": self.context_text,
+            "base_text": self.base_text,
+            "template_id": self.template_id,
+            "predicate_family": self.predicate_family,
+            "target_axis": self.target_axis.value,
+            "items": [item.to_dict() for item in self.items],
+        }
+
 
 @dataclass(frozen=True)
 class BlindReview:
@@ -266,13 +308,208 @@ def load_drafts(path: Path, *, protocol_version: str) -> list[HumanDraft]:
         HumanDraft.from_dict(row, protocol_version=protocol_version)
         for row in _read_jsonl(path)
     ]
+    _validate_unique_drafts(drafts)
+    return drafts
+
+
+def _validate_unique_drafts(drafts: Sequence[HumanDraft]) -> None:
     case_ids = [draft.case_id for draft in drafts]
     annotation_ids = [item.annotation_id for draft in drafts for item in draft.items]
     if len(case_ids) != len(set(case_ids)):
         raise ValueError("case_id values must be globally unique")
     if len(annotation_ids) != len(set(annotation_ids)):
         raise ValueError("annotation_id values must be globally unique")
-    return drafts
+
+
+def _placeholder_count(value: Any) -> int:
+    if isinstance(value, str):
+        return int(value.startswith(_PLACEHOLDER_PREFIXES))
+    if isinstance(value, Mapping):
+        return sum(_placeholder_count(item) for item in value.values())
+    if isinstance(value, Sequence) and not isinstance(value, (str, bytes)):
+        return sum(_placeholder_count(item) for item in value)
+    return 0
+
+
+def inspect_draft_packets(
+    draft_paths: Sequence[Path], *, protocol_version: str
+) -> dict[str, Any]:
+    """Report readiness and concrete gaps without accepting incomplete drafts."""
+
+    if not draft_paths:
+        raise ValueError("at least one draft packet is required")
+    if not protocol_version.strip():
+        raise ValueError("protocol-version cannot be empty")
+
+    rows_with_paths: list[tuple[Path, dict[str, Any]]] = []
+    validation_errors = []
+    input_sha256 = {}
+    for path in draft_paths:
+        resolved = path.resolve()
+        try:
+            input_sha256[str(resolved)] = _sha256(resolved)
+            rows = _read_jsonl(resolved)
+        except (OSError, ValueError) as exc:
+            validation_errors.append(
+                {"path": str(resolved), "case_id": None, "reason": str(exc)}
+            )
+            continue
+        rows_with_paths.extend((resolved, row) for row in rows)
+
+    case_ids = Counter(str(row.get("case_id", "<missing>")) for _, row in rows_with_paths)
+    annotation_ids = Counter(
+        str(item.get("annotation_id", "<missing>"))
+        for _, row in rows_with_paths
+        for item in (
+            row.get("items", [])
+            if isinstance(row.get("items", []), Sequence)
+            and not isinstance(row.get("items", []), (str, bytes))
+            else []
+        )
+        if isinstance(item, Mapping)
+    )
+    status_counts = Counter(
+        str(row.get("draft_status", "<missing>")) for _, row in rows_with_paths
+    )
+    axis_counts = Counter(
+        str(row.get("target_axis", "<missing>")) for _, row in rows_with_paths
+    )
+    author_counts = Counter(
+        str(row.get("author_id_hash", "<missing>")) for _, row in rows_with_paths
+    )
+    source_group_counts = Counter(
+        str(row.get("source_group", "<missing>")) for _, row in rows_with_paths
+    )
+    example_only_count = sum(
+        row.get("example_only") is True for _, row in rows_with_paths
+    )
+    placeholder_count = sum(
+        _placeholder_count(row) for _, row in rows_with_paths
+    )
+    valid_case_count = 0
+    for path, row in rows_with_paths:
+        try:
+            HumanDraft.from_dict(row, protocol_version=protocol_version)
+        except (KeyError, TypeError, ValueError) as exc:
+            validation_errors.append(
+                {
+                    "path": str(path),
+                    "case_id": str(row.get("case_id", "<missing>")),
+                    "reason": str(exc),
+                }
+            )
+        else:
+            valid_case_count += 1
+
+    duplicate_case_ids = sorted(
+        value for value, count in case_ids.items() if count > 1
+    )
+    duplicate_annotation_ids = sorted(
+        value for value, count in annotation_ids.items() if count > 1
+    )
+    case_count = len(rows_with_paths)
+    completed_case_count = status_counts.get("complete", 0)
+    gaps = []
+    if case_count == 0:
+        gaps.append("no draft cases found")
+    if completed_case_count != case_count:
+        gaps.append(f"{case_count - completed_case_count} cases are not complete")
+    if example_only_count:
+        gaps.append(f"{example_only_count} cases are still example-only")
+    if placeholder_count:
+        gaps.append(f"{placeholder_count} placeholder values remain")
+    if validation_errors:
+        gaps.append(f"{len(validation_errors)} cases or files fail validation")
+    if duplicate_case_ids:
+        gaps.append(f"{len(duplicate_case_ids)} duplicate case identifiers")
+    if duplicate_annotation_ids:
+        gaps.append(
+            f"{len(duplicate_annotation_ids)} duplicate annotation identifiers"
+        )
+
+    return {
+        "schema_version": COLLECTION_SCHEMA_VERSION,
+        "created_utc": datetime.now(timezone.utc).isoformat(),
+        "protocol_version": protocol_version,
+        "ready_for_assembly": not gaps,
+        "case_count": case_count,
+        "completed_case_count": completed_case_count,
+        "valid_case_count": valid_case_count,
+        "example_only_count": example_only_count,
+        "placeholder_count": placeholder_count,
+        "status_counts": dict(sorted(status_counts.items())),
+        "axis_counts": dict(sorted(axis_counts.items())),
+        "author_counts": dict(sorted(author_counts.items())),
+        "source_group_counts": dict(sorted(source_group_counts.items())),
+        "duplicate_case_ids": duplicate_case_ids,
+        "duplicate_annotation_ids": duplicate_annotation_ids,
+        "validation_errors": validation_errors,
+        "gaps": gaps,
+        "input_sha256": dict(sorted(input_sha256.items())),
+    }
+
+
+def assemble_draft_packets(
+    draft_paths: Sequence[Path],
+    output: Path,
+    *,
+    protocol_version: str,
+    overwrite: bool,
+) -> tuple[Path, Path]:
+    """Validate author packets jointly and emit one canonical pre-review file."""
+
+    output = output.resolve()
+    manifest = output.with_name(f"{output.name}.manifest.json")
+    existing = [path for path in (output, manifest) if path.exists()]
+    if existing and not overwrite:
+        raise FileExistsError(f"refusing to overwrite: {', '.join(map(str, existing))}")
+    report = inspect_draft_packets(
+        draft_paths, protocol_version=protocol_version
+    )
+    if not report["ready_for_assembly"]:
+        raise ValueError("draft packets are not ready: " + "; ".join(report["gaps"]))
+
+    drafts = [
+        HumanDraft.from_dict(row, protocol_version=protocol_version)
+        for path in draft_paths
+        for row in _read_jsonl(path)
+    ]
+    _validate_unique_drafts(drafts)
+    axis_counts = Counter(draft.target_axis.value for draft in drafts)
+    author_counts = Counter(draft.author_id_hash for draft in drafts)
+    source_group_counts = Counter(draft.source_group for draft in drafts)
+    input_sha256 = {
+        str(path.resolve()): _sha256(path.resolve()) for path in draft_paths
+    }
+    output.parent.mkdir(parents=True, exist_ok=True)
+    _write_jsonl(output, [draft.to_dict() for draft in drafts])
+    manifest.write_text(
+        json.dumps(
+            {
+                "schema_version": COLLECTION_SCHEMA_VERSION,
+                "created_utc": datetime.now(timezone.utc).isoformat(),
+                "protocol_version": protocol_version,
+                "human_authored": True,
+                "evaluation_partition": "pre-review",
+                "model_evaluation_forbidden": True,
+                "locked": False,
+                "claim_eligible": False,
+                "case_count": len(drafts),
+                "intervention_count": sum(len(draft.items) for draft in drafts),
+                "axis_counts": dict(sorted(axis_counts.items())),
+                "author_counts": dict(sorted(author_counts.items())),
+                "source_group_counts": dict(sorted(source_group_counts.items())),
+                "input_sha256": dict(sorted(input_sha256.items())),
+                "sha256": _sha256(output),
+                "output": str(output),
+            },
+            indent=2,
+            sort_keys=True,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    return output, manifest
 
 
 def _blank_dry_run_case(
@@ -380,9 +617,21 @@ For every assigned case:
 4. remove `example_only` and set `draft_status` to `complete`;
 5. do not use an LLM, machine paraphraser, synthetic-v4 text, or model output.
 
-The coordinator concatenates the completed JSONL packets, validates them with
-the collection command, then creates the blind review packet. Dry-run cases are
-discarded after the workflow and must never be frozen as evaluation evidence.
+The coordinator validates the completed JSONL packets with `draft-status`,
+assembles them with `assemble-drafts`, then creates the blind review packet.
+Dry-run cases are discarded after the workflow and must never be frozen as
+evaluation evidence.
+
+Check the three returned packets without modifying them:
+
+```
+spectra-phase0-human-frame-collection draft-status --drafts \
+  author-slot-01.drafts.jsonl author-slot-02.drafts.jsonl \
+  author-slot-03.drafts.jsonl --protocol-version human-frame-v1-dry-run
+```
+
+Only a report with `ready_for_assembly: true` may be passed to
+`assemble-drafts`.
 """
     readme_tmp = readme.with_name(f"{readme.name}.tmp")
     readme_tmp.write_text(readme_text, encoding="utf-8")
@@ -699,6 +948,18 @@ def _parser() -> argparse.ArgumentParser:
     dry_run.add_argument("--seed", type=int, default=141421)
     dry_run.add_argument("--overwrite", action="store_true")
 
+    status = subparsers.add_parser("draft-status")
+    status.add_argument("--drafts", type=Path, nargs="+", required=True)
+    status.add_argument("--protocol-version", required=True)
+    status.add_argument("--output", type=Path)
+    status.add_argument("--overwrite", action="store_true")
+
+    assemble = subparsers.add_parser("assemble-drafts")
+    assemble.add_argument("--drafts", type=Path, nargs="+", required=True)
+    assemble.add_argument("--output", type=Path, required=True)
+    assemble.add_argument("--protocol-version", required=True)
+    assemble.add_argument("--overwrite", action="store_true")
+
     packet = subparsers.add_parser("review-packet")
     packet.add_argument("--drafts", type=Path, required=True)
     packet.add_argument("--packet", type=Path, required=True)
@@ -725,6 +986,26 @@ def main(argv: Sequence[str] | None = None) -> int:
             args.output_dir,
             protocol_version=args.protocol_version,
             seed=args.seed,
+            overwrite=args.overwrite,
+        )
+    elif args.command == "draft-status":
+        report = inspect_draft_packets(
+            args.drafts,
+            protocol_version=args.protocol_version,
+        )
+        if args.output is None:
+            print(json.dumps(report, indent=2, sort_keys=True))
+            return 0
+        status_output = args.output.resolve()
+        if status_output.exists() and not args.overwrite:
+            raise FileExistsError(f"refusing to overwrite: {status_output}")
+        _write_json(status_output, report)
+        outputs = (status_output,)
+    elif args.command == "assemble-drafts":
+        outputs = assemble_draft_packets(
+            args.drafts,
+            args.output,
+            protocol_version=args.protocol_version,
             overwrite=args.overwrite,
         )
     elif args.command == "review-packet":

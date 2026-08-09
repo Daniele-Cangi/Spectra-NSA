@@ -5,8 +5,10 @@ import pytest
 
 from experiments.adversarial_frame_corpus import generate_adversarial_frame_orbits
 from experiments.human_frame_collection import (
+    assemble_draft_packets,
     compile_run,
     compile_reviewed_orbits,
+    inspect_draft_packets,
     load_drafts,
     make_blind_review_packet,
     make_dry_run_kit,
@@ -22,7 +24,13 @@ REVIEWER_A = "sha256:" + "b" * 64
 REVIEWER_B = "sha256:" + "c" * 64
 
 
-def _draft_row(axis: str = "relation") -> dict:
+def _draft_row(
+    axis: str = "relation",
+    *,
+    case_id: str = "case-a",
+    author_id_hash: str = AUTHOR,
+    source_group: str = "source-a",
+) -> dict:
     orbit = generate_adversarial_frame_orbits(1, seed=7)[0]
     items = []
     for item in orbit.interventions:
@@ -32,7 +40,7 @@ def _draft_row(axis: str = "relation") -> dict:
         role = item.metadata["adversarial_role"]
         items.append(
             {
-                "annotation_id": f"case-a-{change.axis.value}-{role}",
+                "annotation_id": f"{case_id}-{change.axis.value}-{role}",
                 "axis": change.axis.value,
                 "role": role,
                 "transformed_text": item.transformed_text,
@@ -46,9 +54,9 @@ def _draft_row(axis: str = "relation") -> dict:
     return {
         "schema_version": 1,
         "draft_status": "complete",
-        "case_id": "case-a",
-        "author_id_hash": AUTHOR,
-        "source_group": "source-a",
+        "case_id": case_id,
+        "author_id_hash": author_id_hash,
+        "source_group": source_group,
         "collection_protocol": PROTOCOL,
         "language": "en",
         "context_text": orbit.context_text,
@@ -236,5 +244,73 @@ def test_dry_run_kit_is_balanced_and_cannot_be_loaded_as_evidence(tmp_path) -> N
     }
     assert all(row["example_only"] is True for row in rows)
     assert all(row["draft_status"] == "incomplete" for row in rows)
+    report = inspect_draft_packets(
+        packet_paths,
+        protocol_version="human-frame-v1-dry-run",
+    )
+    assert report["ready_for_assembly"] is False
+    assert report["case_count"] == 12
+    assert report["completed_case_count"] == 0
+    assert report["example_only_count"] == 12
+    assert report["placeholder_count"] > 0
     with pytest.raises(ValueError, match="example-only"):
         load_drafts(packet_paths[0], protocol_version="human-frame-v1-dry-run")
+    with pytest.raises(ValueError, match="draft packets are not ready"):
+        assemble_draft_packets(
+            packet_paths,
+            output_dir / "assembled.jsonl",
+            protocol_version="human-frame-v1-dry-run",
+            overwrite=False,
+        )
+
+
+def test_completed_packets_assemble_to_canonical_pre_review_file(tmp_path) -> None:
+    axes = ("relation", "direction", "scope", "modality")
+    packet_a = tmp_path / "author-a.jsonl"
+    packet_b = tmp_path / "author-b.jsonl"
+    _write_jsonl(
+        packet_a,
+        [
+            _draft_row(axis, case_id=f"case-{axis}")
+            for axis in axes[:2]
+        ],
+    )
+    _write_jsonl(
+        packet_b,
+        [
+            _draft_row(axis, case_id=f"case-{axis}")
+            for axis in axes[2:]
+        ],
+    )
+
+    report = inspect_draft_packets(
+        [packet_a, packet_b], protocol_version=PROTOCOL
+    )
+    assert report["ready_for_assembly"] is True
+    assert report["case_count"] == 4
+    assert report["valid_case_count"] == 4
+    assert report["axis_counts"] == {
+        "direction": 1,
+        "modality": 1,
+        "relation": 1,
+        "scope": 1,
+    }
+
+    output, manifest_path = assemble_draft_packets(
+        [packet_a, packet_b],
+        tmp_path / "assembled.jsonl",
+        protocol_version=PROTOCOL,
+        overwrite=False,
+    )
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    assembled_rows = [
+        json.loads(line) for line in output.read_text(encoding="utf-8").splitlines()
+    ]
+
+    assert len(load_drafts(output, protocol_version=PROTOCOL)) == 4
+    assert all("example_only" not in row for row in assembled_rows)
+    assert all(row["draft_status"] == "complete" for row in assembled_rows)
+    assert manifest["evaluation_partition"] == "pre-review"
+    assert manifest["model_evaluation_forbidden"] is True
+    assert manifest["intervention_count"] == 12
+    assert manifest["sha256"] == hashlib.sha256(output.read_bytes()).hexdigest()

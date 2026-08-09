@@ -84,6 +84,21 @@ finished. The rehearsal validates instructions, timing, blind packet generation,
 agreement, and coordinator hand-offs. It is then discarded: no observer or NLI evaluation is run,
 and no rehearsal item can enter the locked corpus.
 
+At distribution time, `draft-status` must report the twelve expected incomplete cases. After the
+authors return their packets, rerun it and require `ready_for_assembly: true`:
+
+```bash
+spectra-phase0-human-frame-collection draft-status \
+  --drafts human-frame-dry-run/author-slot-01.drafts.jsonl \
+           human-frame-dry-run/author-slot-02.drafts.jsonl \
+           human-frame-dry-run/author-slot-03.drafts.jsonl \
+  --protocol-version human-frame-v1-dry-run \
+  --output human-frame-dry-run/draft-status.json
+```
+
+The report counts incomplete cases, example flags, remaining placeholders, schema errors, and
+identifiers duplicated across different author files. It never repairs content automatically.
+
 ## Author draft
 
 Drafts are JSONL, one complete mono-axis orbit per line. The non-runnable schema template is
@@ -95,6 +110,22 @@ globally unique `case_id`, an explicit `target_axis`, and three interventions wi
 The compiler derives the task relation from `query_relevant` and `value_changed`. It rejects a role
 whose flags disagree with the fixed contract, duplicate texts, cross-axis edits, or incomplete
 matched triplets.
+
+## Validated handoff
+
+Do not concatenate returned author files manually. Jointly validate and canonicalize them:
+
+```bash
+spectra-phase0-human-frame-collection assemble-drafts \
+  --drafts author-a.drafts.jsonl author-b.drafts.jsonl author-c.drafts.jsonl \
+  --output drafts.jsonl \
+  --protocol-version human-frame-v1
+```
+
+Assembly is fail-closed: every case must be complete, contain no known placeholder, validate under
+the frozen protocol, and have globally unique case and annotation identifiers. The output removes
+non-schema fields and its manifest records input and output hashes, axis counts, author counts, and
+source-group counts. It remains a pre-review artifact on which model evaluation is forbidden.
 
 ## Blind review
 
