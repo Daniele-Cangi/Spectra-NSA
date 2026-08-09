@@ -1,5 +1,11 @@
 # Pilot v4 human-locked collection protocol
 
+> **Superseded rehearsal:** the blank-page `human-frame-v1-dry-run` described
+> below was not distributed and is retained as historical protocol text. Use
+> the [source-seeded v2 protocol](PILOT_V4_SOURCE_SEEDED_COLLECTION_PROTOCOL.md)
+> and `human-frame-v2-source-dry-run` for the current rehearsal. The locked-set
+> review, freeze, and one-shot evaluation boundaries remain unchanged.
+
 ## Frozen status
 
 Protocol identifiers:

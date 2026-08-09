@@ -26,7 +26,7 @@ REQUIRED_REVIEWERS = 2
 DRY_RUN_AUTHOR_SLOTS = 3
 DRY_RUN_SOURCE_GROUPS = ("institutional", "dialogue", "narrative")
 _AXIS_ORDER = ("relation", "direction", "scope", "modality")
-_PLACEHOLDER_PREFIXES = ("<replace-", "sha256:replace-")
+_PLACEHOLDER_PREFIXES = ("<replace-", "<human-", "sha256:replace-")
 _HASH_ID_PATTERN = re.compile(r"sha256:[0-9a-f]{64}\Z")
 _LOCAL_ID_PATTERN = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]{2,95}\Z")
 
@@ -191,6 +191,8 @@ class HumanDraft:
     predicate_family: str
     target_axis: SemanticAxis
     items: tuple[HumanDraftItem, ...]
+    source_seed_id: str | None = None
+    inference_assisted_seed: bool = False
 
     @classmethod
     def from_dict(
@@ -200,6 +202,10 @@ class HumanDraft:
             raise ValueError("unsupported human draft schema version")
         if value.get("example_only") is True:
             raise ValueError("example-only draft cannot enter collection")
+        if "machine_generated" in value and value["machine_generated"] is not False:
+            raise ValueError("machine-generated draft cannot enter human collection")
+        if "development_only" in value and value["development_only"] is not False:
+            raise ValueError("development-only draft cannot enter human collection")
         if value.get("draft_status") != "complete":
             raise ValueError("human draft must be explicitly marked complete")
         draft = cls(
@@ -222,6 +228,15 @@ class HumanDraft:
             items=tuple(
                 HumanDraftItem.from_dict(item) for item in value["items"]
             ),
+            source_seed_id=(
+                _require_local_id(value["source_seed_id"], "source_seed_id")
+                if value.get("source_seed_id") is not None
+                else None
+            ),
+            inference_assisted_seed=_require_bool(
+                value.get("inference_assisted_seed", False),
+                "inference_assisted_seed",
+            ),
         )
         if draft.collection_protocol != protocol_version:
             raise ValueError(
@@ -231,6 +246,10 @@ class HumanDraft:
         return draft
 
     def validate(self) -> None:
+        if self.inference_assisted_seed and self.source_seed_id is None:
+            raise ValueError(
+                f"{self.case_id}: inference-assisted draft requires source_seed_id"
+            )
         if not self.items:
             raise ValueError(f"{self.case_id}: draft has no interventions")
         annotation_ids = [item.annotation_id for item in self.items]
@@ -252,7 +271,7 @@ class HumanDraft:
             raise ValueError(f"{self.case_id}: duplicate target-axis role")
 
     def to_dict(self) -> dict[str, Any]:
-        return {
+        result = {
             "schema_version": COLLECTION_SCHEMA_VERSION,
             "draft_status": "complete",
             "case_id": self.case_id,
@@ -267,6 +286,10 @@ class HumanDraft:
             "target_axis": self.target_axis.value,
             "items": [item.to_dict() for item in self.items],
         }
+        if self.source_seed_id is not None:
+            result["source_seed_id"] = self.source_seed_id
+            result["inference_assisted_seed"] = self.inference_assisted_seed
+        return result
 
 
 @dataclass(frozen=True)
@@ -868,6 +891,8 @@ def compile_reviewed_orbits(
                     "template_id": draft.template_id,
                     "predicate_family": draft.predicate_family,
                     "target_axis": draft.target_axis.value,
+                    "source_seed_id": draft.source_seed_id,
+                    "inference_assisted_seed": draft.inference_assisted_seed,
                     "language": draft.language,
                     "factor_fingerprint": fingerprint,
                 },

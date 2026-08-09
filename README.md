@@ -24,6 +24,8 @@ measurement experiment succeeds.
 - [semantic-variable pilot v3 and fixed-aggregation result](docs/PILOT_V3_VARIABLES_FINDINGS.md)
 - [adversarial frame pilot v4 and selective-cascade result](docs/PILOT_V4_FRAME_FINDINGS.md)
 - [human-locked Pilot v4 collection protocol](docs/PILOT_V4_HUMAN_COLLECTION_PROTOCOL.md)
+- [source-seeded Pilot v4 collection protocol](docs/PILOT_V4_SOURCE_SEEDED_COLLECTION_PROTOCOL.md)
+- [source-mining Pilot v4 findings](docs/PILOT_V4_SOURCE_MINING_FINDINGS.md)
 
 Read first:
 

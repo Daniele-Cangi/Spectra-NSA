@@ -131,6 +131,9 @@ required.
 
 The authoring, double-blind-review, freeze, and one-shot evaluation procedure is specified in the
 [human-locked collection protocol](PILOT_V4_HUMAN_COLLECTION_PROTOCOL.md).
+The current rehearsal supplies natural public-text seeds under the separate
+[source-seeded collection protocol](PILOT_V4_SOURCE_SEEDED_COLLECTION_PROTOCOL.md); inference does
+not write the human triplets or determine the locked labels.
 
 No generated text in this pilot is represented as human authored.
 
