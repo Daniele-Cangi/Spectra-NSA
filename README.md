@@ -11,13 +11,24 @@ real architecture and training work, but several claims, benchmarks, and monitor
 not validated strongly enough. New development starts from the small `spectra_v2` core and follows a
 strict experiment-first protocol.
 
+An exploratory v3 direction is now being tested around **semantic response spectra**: representing
+not only where a text lies in embedding space, but how its representation responds to controlled
+meaning-preserving and meaning-changing interventions. The Phase 0 measurement core is implemented,
+but the hypothesis is not yet validated and does not replace the v2 baseline until the locked
+measurement experiment succeeds.
+
+- [v3 semantic response spectra research specification](docs/V3_SEMANTIC_RESPONSE_SPECTRA.md)
+- [Phase 0 response measurement protocol](docs/PHASE0_RESPONSE_MEASUREMENT.md)
+- [256-orbit synthetic pilot findings](docs/PILOT_256_FINDINGS.md)
+- [task-relative pilot v2 and typed-response pivot](docs/PILOT_V2_FINDINGS.md)
+
 Read first:
 
 - [Research reset and verified status](docs/RESEARCH_RESET.md)
 - [v2 architecture](docs/V2_ARCHITECTURE.md)
 - [experiment protocol](docs/EXPERIMENT_PROTOCOL.md)
 
-## The narrow research question
+## The v2 narrow research question
 
 > At matched parameter, data, and update budgets, do heterogeneous semantic and Fourier token
 > mixers produce complementary embedding views, and does their disagreement predict difficult or

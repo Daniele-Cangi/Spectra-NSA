@@ -7,10 +7,22 @@ name = "spectra-nsa"
 version = "0.3.0.dev0"
 description = "Experimental heterogeneous-mixer embedding research"
 requires-python = ">=3.10"
-dependencies = ["torch>=2.0"]
+dependencies = ["numpy>=1.24", "torch>=2.0"]
 
 [project.optional-dependencies]
-dev = ["pytest>=7.0"]
+dev = ["flake8>=7.0", "pytest>=7.0"]
+phase0 = ["sentence-transformers>=3.0"]
+
+[project.scripts]
+spectra-phase0 = "experiments.phase0_measure_response:main"
+spectra-phase0-pilot = "experiments.pilot_corpus:main"
+spectra-phase0-summarize = "experiments.phase0_summarize:main"
+spectra-phase0-late = "experiments.phase0_late_interaction:main"
+spectra-phase0-fuse = "experiments.phase0_fuse_views:main"
+spectra-phase0-nli = "experiments.phase0_nli_baseline:main"
+
+[tool.setuptools.packages.find]
+include = ["experiments*", "spectra_v2*", "spectra_v3*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
