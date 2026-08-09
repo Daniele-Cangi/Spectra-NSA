@@ -28,6 +28,7 @@ spectra-phase0-frame-pilot = "experiments.adversarial_frame_corpus:main"
 spectra-phase0-frame-observer = "experiments.phase0_frame_observer:main"
 spectra-phase0-frame-evaluate = "experiments.phase0_frame_evaluate:main"
 spectra-phase0-human-frame-intake = "experiments.human_frame_intake:main"
+spectra-phase0-human-frame-collection = "experiments.human_frame_collection:main"
 
 [tool.setuptools.packages.find]
 include = ["experiments*", "spectra_v2*", "spectra_v3*"]

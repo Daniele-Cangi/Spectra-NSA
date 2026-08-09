@@ -57,3 +57,32 @@ def test_cascade_falls_back_only_for_ambiguous_frame_scores() -> None:
         "feasible_from_baseline"
     ] is False
     assert result["error_audit"]["false_negative_count"] == 0
+
+
+def test_human_locked_records_use_the_frozen_human_gate() -> None:
+    records = _records(with_nli=True)
+    for record in records:
+        group = int(record["base_id"].rsplit("-", 1)[-1]) % 3
+        record["evaluation_partition"] = "human-locked"
+        record["author_id_hash"] = f"author-{group}"
+        record["source_group"] = f"source-{group}"
+        record["selected_span_score"] = 0.05 * record["label"]
+        if record["semantic_axis"] == "relation":
+            record["selected_span_score"] = 0.0
+
+    result = evaluate(records)
+
+    assert result["decision_gate"]["gate_name"] == "human-frame-v1"
+    assert result["decision_gate"]["passed"] is True
+    assert set(result["views"]["cascade"]["per_author_id_hash"]) == {
+        "author-0",
+        "author-1",
+        "author-2",
+    }
+
+    for record in records:
+        record["selected_span_score"] = float(record["label"])
+    perfect_baseline = evaluate(records)
+    assert perfect_baseline["decision_gate"]["checks"][
+        "relation_error_reduction_at_least_0_50_or_perfect"
+    ] is True

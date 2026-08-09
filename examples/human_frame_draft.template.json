@@ -1,0 +1,147 @@
+{
+  "schema_version": 1,
+  "example_only": true,
+  "case_id": "replace-with-opaque-case-id",
+  "author_id_hash": "sha256:replace-with-64-lowercase-hex-digits",
+  "source_group": "replace-with-source-group",
+  "collection_protocol": "human-frame-v1",
+  "language": "en",
+  "context_text": "<human-written query>",
+  "base_text": "<human-written base document>",
+  "template_id": "free-grammar",
+  "predicate_family": "human-defined-family",
+  "items": [
+    {
+      "annotation_id": "replace-relation-critical",
+      "axis": "relation",
+      "role": "critical",
+      "transformed_text": "<human-written transformed document>",
+      "frame_id": "target",
+      "query_relevant": true,
+      "value_changed": true,
+      "before_value": "<before>",
+      "after_value": "<after>"
+    },
+    {
+      "annotation_id": "replace-relation-control",
+      "axis": "relation",
+      "role": "control",
+      "transformed_text": "<human-written transformed document>",
+      "frame_id": "distractor",
+      "query_relevant": false,
+      "value_changed": true,
+      "before_value": "<before>",
+      "after_value": "<after>"
+    },
+    {
+      "annotation_id": "replace-relation-invariant",
+      "axis": "relation",
+      "role": "invariant",
+      "transformed_text": "<human-written transformed document>",
+      "frame_id": "target",
+      "query_relevant": true,
+      "value_changed": false,
+      "before_value": "<same-value>",
+      "after_value": "<same-value>"
+    },
+    {
+      "annotation_id": "replace-direction-critical",
+      "axis": "direction",
+      "role": "critical",
+      "transformed_text": "<human-written transformed document>",
+      "frame_id": "target",
+      "query_relevant": true,
+      "value_changed": true,
+      "before_value": "<before>",
+      "after_value": "<after>"
+    },
+    {
+      "annotation_id": "replace-direction-control",
+      "axis": "direction",
+      "role": "control",
+      "transformed_text": "<human-written transformed document>",
+      "frame_id": "distractor",
+      "query_relevant": false,
+      "value_changed": true,
+      "before_value": "<before>",
+      "after_value": "<after>"
+    },
+    {
+      "annotation_id": "replace-direction-invariant",
+      "axis": "direction",
+      "role": "invariant",
+      "transformed_text": "<human-written transformed document>",
+      "frame_id": "target",
+      "query_relevant": true,
+      "value_changed": false,
+      "before_value": "<same-value>",
+      "after_value": "<same-value>"
+    },
+    {
+      "annotation_id": "replace-scope-critical",
+      "axis": "scope",
+      "role": "critical",
+      "transformed_text": "<human-written transformed document>",
+      "frame_id": "target",
+      "query_relevant": true,
+      "value_changed": true,
+      "before_value": "<before>",
+      "after_value": "<after>"
+    },
+    {
+      "annotation_id": "replace-scope-control",
+      "axis": "scope",
+      "role": "control",
+      "transformed_text": "<human-written transformed document>",
+      "frame_id": "distractor",
+      "query_relevant": false,
+      "value_changed": true,
+      "before_value": "<before>",
+      "after_value": "<after>"
+    },
+    {
+      "annotation_id": "replace-scope-invariant",
+      "axis": "scope",
+      "role": "invariant",
+      "transformed_text": "<human-written transformed document>",
+      "frame_id": "target",
+      "query_relevant": true,
+      "value_changed": false,
+      "before_value": "<same-value>",
+      "after_value": "<same-value>"
+    },
+    {
+      "annotation_id": "replace-modality-critical",
+      "axis": "modality",
+      "role": "critical",
+      "transformed_text": "<human-written transformed document>",
+      "frame_id": "target",
+      "query_relevant": true,
+      "value_changed": true,
+      "before_value": "<before>",
+      "after_value": "<after>"
+    },
+    {
+      "annotation_id": "replace-modality-control",
+      "axis": "modality",
+      "role": "control",
+      "transformed_text": "<human-written transformed document>",
+      "frame_id": "distractor",
+      "query_relevant": false,
+      "value_changed": true,
+      "before_value": "<before>",
+      "after_value": "<after>"
+    },
+    {
+      "annotation_id": "replace-modality-invariant",
+      "axis": "modality",
+      "role": "invariant",
+      "transformed_text": "<human-written transformed document>",
+      "frame_id": "target",
+      "query_relevant": true,
+      "value_changed": false,
+      "before_value": "<same-value>",
+      "after_value": "<same-value>"
+    }
+  ]
+}

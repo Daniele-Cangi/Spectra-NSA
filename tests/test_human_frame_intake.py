@@ -7,6 +7,12 @@ from experiments.human_frame_intake import HUMAN_SOURCE, validate_human_orbits
 from spectra_v3.interventions import VerificationStatus
 
 
+AUTHOR = "sha256:" + "a" * 64
+REVIEWER_A = "sha256:" + "b" * 64
+REVIEWER_B = "sha256:" + "c" * 64
+MAPPING_HASH = "d" * 64
+
+
 def _human_orbit():
     orbit = generate_adversarial_frame_orbits(1, seed=7)[0]
     interventions = tuple(
@@ -16,6 +22,11 @@ def _human_orbit():
             metadata={
                 **item.metadata,
                 "human_annotation_id": f"annotation-{index}",
+                "blinded_review": True,
+                "reviewer_count": 2,
+                "reviewer_id_hashes": [REVIEWER_A, REVIEWER_B],
+                "review_protocol": "blind-frame-v1",
+                "private_mapping_sha256": MAPPING_HASH,
             },
         )
         for index, item in enumerate(orbit.interventions)
@@ -28,9 +39,10 @@ def _human_orbit():
             **orbit.metadata,
             "human_authored": True,
             "evaluation_partition": "human-locked",
-            "author_id_hash": "sha256:author",
+            "author_id_hash": AUTHOR,
             "source_group": "batch-a",
             "collection_protocol": "frame-v4.1",
+            "review_protocol": "blind-frame-v1",
         },
     )
 

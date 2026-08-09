@@ -1,0 +1,10 @@
+{
+  "review_item_id": "<opaque identifier from the public review packet>",
+  "reviewer_id_hash": "sha256:replace-with-64-lowercase-hex-digits",
+  "judged_axis": "<relation|direction|scope|modality>",
+  "judged_relation": "<change|preserve>",
+  "fluent": true,
+  "single_axis": true,
+  "accept": true,
+  "model_output_seen": false
+}

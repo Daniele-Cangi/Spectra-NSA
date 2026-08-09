@@ -91,6 +91,10 @@ def build_records(
                 "frame_score": float(frame["frame_distance"]),
                 "observer_reliability": float(frame["observer_reliability"]),
             }
+            for optional_field in ("author_id_hash", "source_group"):
+                value = orbit.metadata.get(optional_field)
+                if value is not None:
+                    record[optional_field] = str(value)
             if nli_rows is not None:
                 if key not in nli_lookup:
                     raise ValueError(f"missing NLI observation: {key}")
@@ -174,12 +178,18 @@ def _evaluate_view(
             records, score_name, threshold=threshold
         ),
     }
-    for field in (
+    fields = [
         "semantic_axis",
         "evaluation_partition",
         "predicate_family",
         "template_id",
-    ):
+    ]
+    fields.extend(
+        field
+        for field in ("author_id_hash", "source_group")
+        if all(field in record for record in records)
+    )
+    for field in fields:
         result[f"per_{field}"] = {
             value: _slice_metrics(
                 [record for record in records if record[field] == value],
@@ -209,7 +219,7 @@ def _add_cascade_scores(records: Sequence[dict[str, Any]]) -> float:
     return fallback_count / len(records)
 
 
-def _gate_report(result: dict[str, Any]) -> dict[str, Any]:
+def _synthetic_gate_report(result: dict[str, Any]) -> dict[str, Any]:
     span = result["views"]["selected_span"]
     preferred_name = "cascade" if "cascade" in result["views"] else "frame_fixed"
     preferred = result["views"][preferred_name]
@@ -257,6 +267,7 @@ def _gate_report(result: dict[str, Any]) -> dict[str, Any]:
             result["cascade"]["fallback_rate"] <= 0.30
         )
     return {
+        "gate_name": "synthetic-frame-v1.1",
         "preferred_view": preferred_name,
         "passed": all(checks.values()),
         "gate_revision": (
@@ -277,6 +288,79 @@ def _gate_report(result: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _human_gate_report(result: dict[str, Any]) -> dict[str, Any]:
+    preferred_name = "cascade" if "cascade" in result["views"] else "frame_fixed"
+    preferred = result["views"][preferred_name]
+    span = result["views"]["selected_span"]
+    relation_auc = preferred["per_semantic_axis"]["relation"]["auroc"]
+    span_relation_auc = span["per_semantic_axis"]["relation"]["auroc"]
+    relation_gain = relation_auc - span_relation_auc
+    remaining_error = 1.0 - span_relation_auc
+    relation_error_reduction = (
+        relation_gain / remaining_error if remaining_error > 0.0 else 0.0
+    )
+    relation_improvement_pass = (
+        relation_auc >= 0.999
+        if remaining_error <= 1e-12
+        else relation_error_reduction >= 0.50
+    )
+    minimum_axis_auc = min(
+        metrics["auroc"]
+        for metrics in preferred["per_semantic_axis"].values()
+    )
+    minimum_author_auc = min(
+        metrics["auroc"]
+        for metrics in preferred["per_author_id_hash"].values()
+    )
+    minimum_source_auc = min(
+        metrics["auroc"]
+        for metrics in preferred["per_source_group"].values()
+    )
+    role_errors = preferred["role_errors"]
+    checks = {
+        "overall_auroc_at_least_0_95": preferred["overall"]["auroc"] >= 0.95,
+        "each_axis_auroc_at_least_0_90": minimum_axis_auc >= 0.90,
+        "each_author_auroc_at_least_0_90": minimum_author_auc >= 0.90,
+        "each_source_group_auroc_at_least_0_90": minimum_source_auc >= 0.90,
+        "critical_recall_at_least_0_95": role_errors["critical_recall"] >= 0.95,
+        "control_false_positive_rate_at_most_0_05": (
+            role_errors["control_false_positive_rate"] <= 0.05
+        ),
+        "invariant_false_positive_rate_at_most_0_10": (
+            role_errors["invariant_false_positive_rate"] <= 0.10
+        ),
+        "relation_error_reduction_at_least_0_50_or_perfect": (
+            relation_improvement_pass
+        ),
+    }
+    if preferred_name == "cascade":
+        checks["nli_fallback_rate_at_most_0_30"] = (
+            result["cascade"]["fallback_rate"] <= 0.30
+        )
+    return {
+        "gate_name": "human-frame-v1",
+        "preferred_view": preferred_name,
+        "passed": all(checks.values()),
+        "checks": checks,
+        "measurements": {
+            "minimum_axis_auroc": minimum_axis_auc,
+            "minimum_author_auroc": minimum_author_auc,
+            "minimum_source_group_auroc": minimum_source_auc,
+            "relation_auroc_gain": relation_gain,
+            "relation_remaining_error_reduction": relation_error_reduction,
+        },
+    }
+
+
+def _gate_report(result: dict[str, Any]) -> dict[str, Any]:
+    partitions = set(
+        result["views"]["frame_fixed"]["per_evaluation_partition"]
+    )
+    if partitions == {"human-locked"}:
+        return _human_gate_report(result)
+    return _synthetic_gate_report(result)
+
+
 def _error_audit(
     records: Sequence[dict[str, Any]], score_name: str, *, threshold: float
 ) -> dict[str, Any]:
@@ -288,6 +372,8 @@ def _error_audit(
         "template_id",
         "predicate_family",
         "evaluation_partition",
+        "author_id_hash",
+        "source_group",
         "label",
         "frame_score",
         "nli_score",
