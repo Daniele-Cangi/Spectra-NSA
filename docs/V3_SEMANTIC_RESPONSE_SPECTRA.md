@@ -247,6 +247,16 @@ The working response object is now:
 with a calibrated router deciding which fibers are sufficient and which pairs require an expensive
 cross-encoder. This is a hypothesis produced by the pilot, not a validated architecture.
 
+The next multi-template pilot refined this again. A fixed norm over explicit lexical variables
+transferred better than an unconstrained concatenation of all neural and NLI features. The preferred
+object is therefore a set of independently canonicalized semantic coordinates with an explicit
+reliability value per coordinate. See
+[Phase 0 pilot v3 findings](PILOT_V3_VARIABLES_FINDINGS.md).
+
+The first relation canonicalizer combines a lexical coordinate norm with the positive cosine drop
+between the query and its selected document span. Its aggregation is fixed and monotone; an
+unconstrained all-feature classifier remains an ablation because it overfit one held-out template.
+
 ### Why order dependence may matter
 
 A local change such as negation can reorganize the global interpretation of a sentence. If local

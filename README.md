@@ -21,6 +21,7 @@ measurement experiment succeeds.
 - [Phase 0 response measurement protocol](docs/PHASE0_RESPONSE_MEASUREMENT.md)
 - [256-orbit synthetic pilot findings](docs/PILOT_256_FINDINGS.md)
 - [task-relative pilot v2 and typed-response pivot](docs/PILOT_V2_FINDINGS.md)
+- [semantic-variable pilot v3 and fixed-aggregation result](docs/PILOT_V3_VARIABLES_FINDINGS.md)
 
 Read first:
 

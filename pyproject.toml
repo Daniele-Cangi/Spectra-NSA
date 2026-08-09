@@ -20,6 +20,10 @@ spectra-phase0-summarize = "experiments.phase0_summarize:main"
 spectra-phase0-late = "experiments.phase0_late_interaction:main"
 spectra-phase0-fuse = "experiments.phase0_fuse_views:main"
 spectra-phase0-nli = "experiments.phase0_nli_baseline:main"
+spectra-phase0-variable-pilot = "experiments.variable_pilot_corpus:main"
+spectra-phase0-variable-state = "experiments.phase0_variable_state:main"
+spectra-phase0-lexical-state = "experiments.phase0_lexical_variables:main"
+spectra-phase0-span-state = "experiments.phase0_span_canonicalizer:main"
 
 [tool.setuptools.packages.find]
 include = ["experiments*", "spectra_v2*", "spectra_v3*"]

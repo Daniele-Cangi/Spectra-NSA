@@ -13,6 +13,7 @@ from typing import Any, Mapping, Sequence
 import numpy as np
 
 from experiments.phase0_late_interaction import _load_orbits
+from spectra_v3.semantic_variables import relational_state_from_probabilities
 
 
 def find_entailment_index(id_to_label: Mapping[int, str]) -> int:
@@ -24,6 +25,17 @@ def find_entailment_index(id_to_label: Mapping[int, str]) -> int:
     if len(matches) != 1:
         raise ValueError(f"cannot identify entailment label: {dict(id_to_label)}")
     return matches[0]
+
+
+def labelled_probabilities(
+    scores: np.ndarray, id_to_label: Mapping[int, str]
+) -> dict[str, float]:
+    if scores.ndim != 1 or scores.shape[0] != len(id_to_label):
+        raise ValueError("score vector and label mapping have different sizes")
+    return {
+        str(id_to_label[index]).casefold(): float(scores[index])
+        for index in sorted(id_to_label)
+    }
 
 
 def _summarize(rows: Sequence[dict[str, Any]]) -> dict[str, Any]:
@@ -120,10 +132,15 @@ def run(args: argparse.Namespace) -> tuple[Path, Path]:
     rows: list[dict[str, Any]] = []
     cursor = 0
     for orbit in orbits:
+        base_probabilities = labelled_probabilities(scores[cursor], labels)
+        base_state = relational_state_from_probabilities(base_probabilities)
         base_entailment = float(scores[cursor, entailment_index])
         interventions = []
         for index, item in enumerate(orbit.interventions):
-            entailment = float(scores[cursor + 1 + index, entailment_index])
+            transformed_scores = scores[cursor + 1 + index]
+            probabilities = labelled_probabilities(transformed_scores, labels)
+            state = relational_state_from_probabilities(probabilities)
+            entailment = float(transformed_scores[entailment_index])
             delta = entailment - base_entailment
             interventions.append(
                 {
@@ -133,12 +150,21 @@ def run(args: argparse.Namespace) -> tuple[Path, Path]:
                     "entailment_probability": entailment,
                     "entailment_delta": delta,
                     "entailment_drop": -delta,
+                    "probabilities": probabilities,
+                    "probability_deltas": {
+                        label: probability - base_probabilities[label]
+                        for label, probability in probabilities.items()
+                    },
+                    "relational_state": state.to_dict(),
+                    "relational_state_delta": state.delta_from(base_state),
                 }
             )
         rows.append(
             {
                 "base_id": orbit.base_id,
                 "base_entailment_probability": base_entailment,
+                "base_probabilities": base_probabilities,
+                "base_relational_state": base_state.to_dict(),
                 "interventions": interventions,
             }
         )
@@ -151,7 +177,7 @@ def run(args: argparse.Namespace) -> tuple[Path, Path]:
     temporary.replace(output)
 
     summary = {
-        "schema_version": 1,
+        "schema_version": 2,
         "created_utc": datetime.now(timezone.utc).isoformat(),
         "input": str(args.input.resolve()),
         "input_sha256": hashlib.sha256(args.input.read_bytes()).hexdigest(),

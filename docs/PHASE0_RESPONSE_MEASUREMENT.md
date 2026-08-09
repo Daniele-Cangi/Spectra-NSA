@@ -319,8 +319,18 @@ The implemented analysis tools also include:
 - `spectra-phase0-late` for query-token/document-token late-interaction response;
 - `spectra-phase0-fuse` for grouped and leave-one-family-out diagnostic fusion;
 - `spectra-phase0-nli` for the frozen relation-aware NLI baseline.
+- `spectra-phase0-variable-pilot` for the multi-template semantic-variable corpus;
+- `spectra-phase0-lexical-state` for the family-blind lexical variable observer;
+- `spectra-phase0-span-state` for pooled semantic compatibility on the selected relevant span;
+- `spectra-phase0-variable-state` for grouped, held-axis, held-template, Jacobian, and axis-decoding
+  comparisons.
 
 The second development pilot found that these views are not interchangeable: late interaction
 recovers entity, quantity, and time sensitivity but misses negation, while the frozen NLI baseline
 solves the current synthetic template. The resulting typed-response revision and exact measurements
 are recorded in [Phase 0 pilot v2 findings](PILOT_V2_FINDINGS.md).
+
+The subsequent five-axis, four-template test found that a fixed norm over explicit variables
+transfers better than unconstrained feature fusion, while also exposing relation-paraphrase
+canonicalization as the next bottleneck. See
+[Phase 0 pilot v3 findings](PILOT_V3_VARIABLES_FINDINGS.md).
