@@ -125,8 +125,9 @@ every non-entailment as contradiction.
 
 The repository includes a strict intake command for a future human-authored locked set. It requires
 human verification status, provenance fields, unique annotation identifiers, and complete matched
-roles for every axis. Freezing a file does not make it claim eligible; an independently approved
-collection and evaluation protocol is still required.
+roles for the assigned axis. The final set is balanced across all four axes. Freezing a file does
+not make it claim eligible; an independently approved collection and evaluation protocol is still
+required.
 
 The authoring, double-blind-review, freeze, and one-shot evaluation procedure is specified in the
 [human-locked collection protocol](PILOT_V4_HUMAN_COLLECTION_PROTOCOL.md).

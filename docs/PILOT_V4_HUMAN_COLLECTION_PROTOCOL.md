@@ -23,12 +23,13 @@ the collection procedure, consent requirements, and intended public use receive 
 The final locked set requires at least:
 
 - 96 complete human-authored orbits;
-- 1,152 interventions, twelve per orbit;
+- 288 interventions, three per orbit;
+- 24 orbits for each of relation, direction, scope, and modality;
 - three independently identified authors;
 - three source groups;
-- two independent blind reviews per intervention, at least 2,304 review decisions.
+- two independent blind reviews per intervention, at least 576 review decisions.
 
-Each orbit must cover relation, direction, scope, and modality. Every axis contains:
+Each orbit targets exactly one semantic axis and contains a matched triplet:
 
 - `critical`: a query-relevant semantic change;
 - `control`: the same type of change in a query-irrelevant frame;
@@ -36,6 +37,9 @@ Each orbit must cover relation, direction, scope, and modality. Every axis conta
 
 Authors write the query, base document, and every transformed document themselves. LLM-generated,
 machine-paraphrased, copied benchmark, and synthetic-v4-derived text is excluded from the locked set.
+Every author and every source group must cover all four axes. This avoids binding a particular
+person or writing domain to one label family. At freeze time, orbit counts across axes, authors,
+and source groups may differ by at most one.
 
 ## Challenge composition
 
@@ -61,14 +65,36 @@ identifiers can be guessed.
 An author cannot review any case in the same locked batch. Reviewer identities are checked against
 all author hashes, not only the author of the current case.
 
+## Workflow dry run
+
+Before collecting the locked set, run a twelve-case rehearsal: three author slots, one assigned
+case per axis for each slot. Generate the kit with:
+
+```bash
+spectra-phase0-human-frame-collection dry-run-kit \
+  --output-dir human-frame-dry-run \
+  --protocol-version human-frame-v1-dry-run \
+  --seed 141421
+```
+
+The generated files contain placeholders, `example_only: true`, and
+`draft_status: incomplete`. The production loader rejects them by construction. Authors replace
+every placeholder, remove `example_only`, and set `draft_status` to `complete` only when a case is
+finished. The rehearsal validates instructions, timing, blind packet generation, reviewer
+agreement, and coordinator hand-offs. It is then discarded: no observer or NLI evaluation is run,
+and no rehearsal item can enter the locked corpus.
+
 ## Author draft
 
-Drafts are JSONL, one complete orbit per line. The non-runnable schema template is
+Drafts are JSONL, one complete mono-axis orbit per line. The non-runnable schema template is
 [`human_frame_draft.template.json`](../examples/human_frame_draft.template.json). Every draft has a
-globally unique `case_id`; every intervention has a globally unique `annotation_id`.
+globally unique `case_id`, an explicit `target_axis`, and three interventions with globally unique
+`annotation_id` values. A production draft must set `draft_status` to `complete` and must not carry
+`example_only`.
 
 The compiler derives the task relation from `query_relevant` and `value_changed`. It rejects a role
-whose flags disagree with the fixed contract, duplicate texts, incomplete axes, or incomplete roles.
+whose flags disagree with the fixed contract, duplicate texts, cross-axis edits, or incomplete
+matched triplets.
 
 ## Blind review
 
@@ -133,8 +159,10 @@ spectra-phase0-human-frame-intake \
   --evaluation-commit 254b225cad05ef38a38275c62296f383c510df1b
 ```
 
-The intake command enforces the minimum orbit, author, source-group, and reviewer counts. Its
-manifest records the immutable evaluation commit and hashes the complete input and output.
+The intake command enforces the minimum orbit, per-axis, author, source-group, and reviewer counts;
+near-uniform marginal balance; and four-axis coverage for every author and source group. Its
+manifest records the immutable evaluation commit, all three balance tables, and hashes the complete
+input and output.
 
 ## One-shot evaluation gate
 

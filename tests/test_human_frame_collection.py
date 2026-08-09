@@ -1,3 +1,4 @@
+import hashlib
 import json
 
 import pytest
@@ -8,6 +9,7 @@ from experiments.human_frame_collection import (
     compile_reviewed_orbits,
     load_drafts,
     make_blind_review_packet,
+    make_dry_run_kit,
 )
 from experiments.human_frame_intake import run as intake_run
 from experiments.human_frame_intake import validate_human_orbits
@@ -20,11 +22,13 @@ REVIEWER_A = "sha256:" + "b" * 64
 REVIEWER_B = "sha256:" + "c" * 64
 
 
-def _draft_row() -> dict:
+def _draft_row(axis: str = "relation") -> dict:
     orbit = generate_adversarial_frame_orbits(1, seed=7)[0]
     items = []
     for item in orbit.interventions:
         change = semantic_change_from_metadata(item.metadata)
+        if change.axis.value != axis:
+            continue
         role = item.metadata["adversarial_role"]
         items.append(
             {
@@ -41,6 +45,7 @@ def _draft_row() -> dict:
         )
     return {
         "schema_version": 1,
+        "draft_status": "complete",
         "case_id": "case-a",
         "author_id_hash": AUTHOR,
         "source_group": "source-a",
@@ -50,6 +55,7 @@ def _draft_row() -> dict:
         "base_text": orbit.base_text,
         "template_id": "free-clause",
         "predicate_family": "permission",
+        "target_axis": axis,
         "items": items,
     }
 
@@ -110,7 +116,7 @@ def test_review_packet_hides_design_labels_and_author(tmp_path) -> None:
         for line in packet_path.read_text(encoding="utf-8").splitlines()
     ]
 
-    assert len(rows) == 12
+    assert len(rows) == 3
     assert set(rows[0]) == {
         "schema_version",
         "review_item_id",
@@ -184,3 +190,51 @@ def test_compile_run_writes_auditable_unlocked_corpus(tmp_path) -> None:
             evaluation_commit="2" * 40,
             overwrite=False,
         )
+
+
+def test_dry_run_kit_is_balanced_and_cannot_be_loaded_as_evidence(tmp_path) -> None:
+    output_dir = tmp_path / "dry-run"
+    outputs = make_dry_run_kit(
+        output_dir,
+        protocol_version="human-frame-v1-dry-run",
+        seed=141421,
+        overwrite=False,
+    )
+    manifest = json.loads(
+        (output_dir / "dry-run-manifest.json").read_text(encoding="utf-8")
+    )
+    packet_paths = sorted(output_dir.glob("author-slot-*.drafts.jsonl"))
+    rows = [
+        json.loads(line)
+        for path in packet_paths
+        for line in path.read_text(encoding="utf-8").splitlines()
+    ]
+
+    assert len(outputs) == 5
+    assert len(packet_paths) == 3
+    assert all(
+        len(path.read_text(encoding="utf-8").splitlines()) == 4
+        for path in packet_paths
+    )
+    assert manifest["case_count"] == 12
+    assert manifest["cases_per_axis"] == {
+        "direction": 3,
+        "modality": 3,
+        "relation": 3,
+        "scope": 3,
+    }
+    assert manifest["cases_per_source_group"] == {
+        "dialogue": 4,
+        "institutional": 4,
+        "narrative": 4,
+    }
+    assert manifest["dry_run_only"] is True
+    assert manifest["model_evaluation_forbidden"] is True
+    assert manifest["packet_sha256"] == {
+        path.name: hashlib.sha256(path.read_bytes()).hexdigest()
+        for path in packet_paths
+    }
+    assert all(row["example_only"] is True for row in rows)
+    assert all(row["draft_status"] == "incomplete" for row in rows)
+    with pytest.raises(ValueError, match="example-only"):
+        load_drafts(packet_paths[0], protocol_version="human-frame-v1-dry-run")

@@ -23,6 +23,9 @@ from .human_frame_intake import HUMAN_SOURCE, REQUIRED_AXES, REQUIRED_ROLES
 
 COLLECTION_SCHEMA_VERSION = 1
 REQUIRED_REVIEWERS = 2
+DRY_RUN_AUTHOR_SLOTS = 3
+DRY_RUN_SOURCE_GROUPS = ("institutional", "dialogue", "narrative")
+_AXIS_ORDER = ("relation", "direction", "scope", "modality")
 _HASH_ID_PATTERN = re.compile(r"sha256:[0-9a-f]{64}\Z")
 _LOCAL_ID_PATTERN = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]{2,95}\Z")
 
@@ -161,6 +164,7 @@ class HumanDraft:
     base_text: str
     template_id: str
     predicate_family: str
+    target_axis: SemanticAxis
     items: tuple[HumanDraftItem, ...]
 
     @classmethod
@@ -171,6 +175,8 @@ class HumanDraft:
             raise ValueError("unsupported human draft schema version")
         if value.get("example_only") is True:
             raise ValueError("example-only draft cannot enter collection")
+        if value.get("draft_status") != "complete":
+            raise ValueError("human draft must be explicitly marked complete")
         draft = cls(
             case_id=_require_local_id(value["case_id"], "case_id"),
             author_id_hash=_require_hash_id(
@@ -187,6 +193,7 @@ class HumanDraft:
             predicate_family=_require_local_id(
                 value["predicate_family"], "predicate_family"
             ),
+            target_axis=SemanticAxis(str(value["target_axis"])),
             items=tuple(
                 HumanDraftItem.from_dict(item) for item in value["items"]
             ),
@@ -209,15 +216,15 @@ class HumanDraft:
             raise ValueError(
                 f"{self.case_id}: transformed texts must be unique and non-base"
             )
-        roles_by_axis: dict[str, set[str]] = defaultdict(set)
-        for item in self.items:
-            roles_by_axis[item.axis.value].add(item.role)
-        if set(roles_by_axis) != REQUIRED_AXES:
-            raise ValueError(f"{self.case_id}: incomplete semantic axes")
-        if any(roles != REQUIRED_ROLES for roles in roles_by_axis.values()):
+        if self.target_axis.value not in REQUIRED_AXES:
+            raise ValueError(f"{self.case_id}: unsupported target axis")
+        if {item.axis for item in self.items} != {self.target_axis}:
+            raise ValueError(f"{self.case_id}: interventions cross semantic axes")
+        roles = {item.role for item in self.items}
+        if roles != REQUIRED_ROLES:
             raise ValueError(f"{self.case_id}: incomplete matched roles")
-        if len(self.items) != len(REQUIRED_AXES) * len(REQUIRED_ROLES):
-            raise ValueError(f"{self.case_id}: duplicate axis-role item")
+        if len(self.items) != len(REQUIRED_ROLES):
+            raise ValueError(f"{self.case_id}: duplicate target-axis role")
 
 
 @dataclass(frozen=True)
@@ -266,6 +273,148 @@ def load_drafts(path: Path, *, protocol_version: str) -> list[HumanDraft]:
     if len(annotation_ids) != len(set(annotation_ids)):
         raise ValueError("annotation_id values must be globally unique")
     return drafts
+
+
+def _blank_dry_run_case(
+    *,
+    author_slot: int,
+    axis: str,
+    source_group: str,
+    protocol_version: str,
+) -> dict[str, Any]:
+    case_id = f"dry-a{author_slot:02d}-{axis}"
+    items = []
+    for role in ("critical", "control", "invariant"):
+        relevant = role != "control"
+        changed = role != "invariant"
+        before = f"<replace-{axis}-{role}-before>"
+        after = before if not changed else f"<replace-{axis}-{role}-after>"
+        items.append(
+            {
+                "annotation_id": f"{case_id}-{role}",
+                "axis": axis,
+                "role": role,
+                "transformed_text": f"<replace-{axis}-{role}-document>",
+                "frame_id": "target" if relevant else "distractor",
+                "query_relevant": relevant,
+                "value_changed": changed,
+                "before_value": before,
+                "after_value": after,
+            }
+        )
+    return {
+        "schema_version": COLLECTION_SCHEMA_VERSION,
+        "example_only": True,
+        "draft_status": "incomplete",
+        "case_id": case_id,
+        "author_id_hash": "sha256:replace-with-64-lowercase-hex-digits",
+        "source_group": source_group,
+        "collection_protocol": protocol_version,
+        "language": "en",
+        "context_text": "<replace-with-human-written-query>",
+        "base_text": "<replace-with-human-written-base-document>",
+        "template_id": "replace-template",
+        "predicate_family": "replace-predicate",
+        "target_axis": axis,
+        "items": items,
+    }
+
+
+def make_dry_run_kit(
+    output_dir: Path,
+    *,
+    protocol_version: str,
+    seed: int,
+    overwrite: bool,
+) -> tuple[Path, ...]:
+    """Create twelve deliberately incomplete authoring cases without model data."""
+
+    if not protocol_version.strip():
+        raise ValueError("protocol-version cannot be empty")
+    output_dir = output_dir.resolve()
+    packet_paths = tuple(
+        output_dir / f"author-slot-{slot:02d}.drafts.jsonl"
+        for slot in range(1, DRY_RUN_AUTHOR_SLOTS + 1)
+    )
+    readme = output_dir / "README.md"
+    manifest = output_dir / "dry-run-manifest.json"
+    targets = (*packet_paths, readme, manifest)
+    existing = [path for path in targets if path.exists()]
+    if existing and not overwrite:
+        raise FileExistsError(f"refusing to overwrite: {', '.join(map(str, existing))}")
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    rng = random.Random(seed)
+    all_rows = []
+    for slot, packet_path in enumerate(packet_paths, start=1):
+        axes = list(_AXIS_ORDER)
+        rng.shuffle(axes)
+        rows = []
+        for axis in axes:
+            canonical_index = _AXIS_ORDER.index(axis)
+            source_group = DRY_RUN_SOURCE_GROUPS[
+                (slot - 1 + canonical_index) % len(DRY_RUN_SOURCE_GROUPS)
+            ]
+            rows.append(
+                _blank_dry_run_case(
+                    author_slot=slot,
+                    axis=axis,
+                    source_group=source_group,
+                    protocol_version=protocol_version,
+                )
+            )
+        _write_jsonl(packet_path, rows)
+        all_rows.extend(rows)
+
+    readme_text = """# Human frame dry run
+
+This kit contains twelve incomplete, model-blind authoring cases: one case per
+semantic axis for each of three author slots. It is a workflow test, not part of
+the locked evaluation set.
+
+For every assigned case:
+
+1. write a natural query and base document;
+2. write exactly three transformed documents for the assigned axis;
+3. replace all placeholder values and the pseudonymous author hash;
+4. remove `example_only` and set `draft_status` to `complete`;
+5. do not use an LLM, machine paraphraser, synthetic-v4 text, or model output.
+
+The coordinator concatenates the completed JSONL packets, validates them with
+the collection command, then creates the blind review packet. Dry-run cases are
+discarded after the workflow and must never be frozen as evaluation evidence.
+"""
+    readme_tmp = readme.with_name(f"{readme.name}.tmp")
+    readme_tmp.write_text(readme_text, encoding="utf-8")
+    readme_tmp.replace(readme)
+    manifest.write_text(
+        json.dumps(
+            {
+                "schema_version": COLLECTION_SCHEMA_VERSION,
+                "created_utc": datetime.now(timezone.utc).isoformat(),
+                "dry_run_only": True,
+                "model_evaluation_forbidden": True,
+                "protocol_version": protocol_version,
+                "seed": seed,
+                "author_slot_count": DRY_RUN_AUTHOR_SLOTS,
+                "case_count": len(all_rows),
+                "cases_per_axis": dict(
+                    sorted(Counter(row["target_axis"] for row in all_rows).items())
+                ),
+                "cases_per_source_group": dict(
+                    sorted(Counter(row["source_group"] for row in all_rows).items())
+                ),
+                "packet_sha256": {
+                    path.name: _sha256(path) for path in packet_paths
+                },
+            },
+            indent=2,
+            sort_keys=True,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    return (*packet_paths, readme, manifest)
 
 
 def make_blind_review_packet(
@@ -469,6 +618,7 @@ def compile_reviewed_orbits(
                     "review_protocol": review_protocol,
                     "template_id": draft.template_id,
                     "predicate_family": draft.predicate_family,
+                    "target_axis": draft.target_axis.value,
                     "language": draft.language,
                     "factor_fingerprint": fingerprint,
                 },
@@ -543,6 +693,12 @@ def _parser() -> argparse.ArgumentParser:
         description="Build blind-review packets and compile human frame orbits."
     )
     subparsers = parser.add_subparsers(dest="command", required=True)
+    dry_run = subparsers.add_parser("dry-run-kit")
+    dry_run.add_argument("--output-dir", type=Path, required=True)
+    dry_run.add_argument("--protocol-version", required=True)
+    dry_run.add_argument("--seed", type=int, default=141421)
+    dry_run.add_argument("--overwrite", action="store_true")
+
     packet = subparsers.add_parser("review-packet")
     packet.add_argument("--drafts", type=Path, required=True)
     packet.add_argument("--packet", type=Path, required=True)
@@ -564,7 +720,14 @@ def _parser() -> argparse.ArgumentParser:
 
 def main(argv: Sequence[str] | None = None) -> int:
     args = _parser().parse_args(argv)
-    if args.command == "review-packet":
+    if args.command == "dry-run-kit":
+        outputs = make_dry_run_kit(
+            args.output_dir,
+            protocol_version=args.protocol_version,
+            seed=args.seed,
+            overwrite=args.overwrite,
+        )
+    elif args.command == "review-packet":
         outputs = make_blind_review_packet(
             args.drafts,
             args.packet,

@@ -21,8 +21,16 @@ MINIMUM_HUMAN_ORBITS = 96
 MINIMUM_HUMAN_AUTHORS = 3
 MINIMUM_SOURCE_GROUPS = 3
 MINIMUM_REVIEWERS = 2
+MINIMUM_ORBITS_PER_AXIS = 24
 _GIT_COMMIT_PATTERN = re.compile(r"[0-9a-f]{40}\Z")
 _HASH_ID_PATTERN = re.compile(r"sha256:[0-9a-f]{64}\Z")
+
+
+def _require_near_balance(counts: Counter[str], dimension: str) -> None:
+    if max(counts.values()) - min(counts.values()) > 1:
+        raise ValueError(
+            f"locked set must balance orbit counts across {dimension} (maximum spread 1)"
+        )
 
 
 def validate_human_orbits(orbits: Sequence[InterventionOrbit]) -> None:
@@ -87,12 +95,15 @@ def validate_human_orbits(orbits: Sequence[InterventionOrbit]) -> None:
             if not re.fullmatch(r"[0-9a-f]{64}", mapping_hash):
                 raise ValueError(f"{orbit.base_id}: missing private mapping hash")
             roles_by_axis.setdefault(change.axis.value, set()).add(role)
-        if set(roles_by_axis) != REQUIRED_AXES:
-            raise ValueError(f"{orbit.base_id}: incomplete human semantic axes")
-        if any(roles != REQUIRED_ROLES for roles in roles_by_axis.values()):
+        if len(roles_by_axis) != 1 or not set(roles_by_axis) <= REQUIRED_AXES:
+            raise ValueError(f"{orbit.base_id}: orbit must contain exactly one axis")
+        if next(iter(roles_by_axis.values())) != REQUIRED_ROLES:
             raise ValueError(f"{orbit.base_id}: incomplete matched human roles")
-        if len(orbit.interventions) != len(REQUIRED_AXES) * len(REQUIRED_ROLES):
+        if len(orbit.interventions) != len(REQUIRED_ROLES):
             raise ValueError(f"{orbit.base_id}: duplicate human axis-role item")
+        axis = next(iter(roles_by_axis))
+        if str(metadata.get("target_axis", "")) != axis:
+            raise ValueError(f"{orbit.base_id}: target axis metadata mismatch")
 
 
 def run(
@@ -114,13 +125,14 @@ def run(
         raise FileExistsError(f"refusing to overwrite: {', '.join(map(str, existing))}")
     orbits = _load_orbits(input_path)
     validate_human_orbits(orbits)
-    authors = {str(x.metadata["author_id_hash"]) for x in orbits}
+    author_counts = Counter(str(x.metadata["author_id_hash"]) for x in orbits)
     source_groups = Counter(str(x.metadata["source_group"]) for x in orbits)
+    axis_counts = Counter(str(x.metadata["target_axis"]) for x in orbits)
     if len(orbits) < MINIMUM_HUMAN_ORBITS:
         raise ValueError(
             f"locked set requires at least {MINIMUM_HUMAN_ORBITS} human orbits"
         )
-    if len(authors) < MINIMUM_HUMAN_AUTHORS:
+    if len(author_counts) < MINIMUM_HUMAN_AUTHORS:
         raise ValueError(
             f"locked set requires at least {MINIMUM_HUMAN_AUTHORS} authors"
         )
@@ -128,6 +140,35 @@ def run(
         raise ValueError(
             f"locked set requires at least {MINIMUM_SOURCE_GROUPS} source groups"
         )
+    if set(axis_counts) != REQUIRED_AXES or any(
+        axis_counts[axis] < MINIMUM_ORBITS_PER_AXIS for axis in REQUIRED_AXES
+    ):
+        raise ValueError(
+            f"locked set requires at least {MINIMUM_ORBITS_PER_AXIS} orbits per axis"
+        )
+    _require_near_balance(axis_counts, "semantic axes")
+    _require_near_balance(author_counts, "authors")
+    _require_near_balance(source_groups, "source groups")
+    author_axes = {
+        author: {
+            str(orbit.metadata["target_axis"])
+            for orbit in orbits
+            if str(orbit.metadata["author_id_hash"]) == author
+        }
+        for author in author_counts
+    }
+    if any(axes != REQUIRED_AXES for axes in author_axes.values()):
+        raise ValueError("every author must contribute to every semantic axis")
+    source_axes = {
+        source: {
+            str(orbit.metadata["target_axis"])
+            for orbit in orbits
+            if str(orbit.metadata["source_group"]) == source
+        }
+        for source in source_groups
+    }
+    if any(axes != REQUIRED_AXES for axes in source_axes.values()):
+        raise ValueError("every source group must cover every semantic axis")
     output.parent.mkdir(parents=True, exist_ok=True)
     temporary = output.with_name(f"{output.name}.tmp")
     with temporary.open("w", encoding="utf-8", newline="\n") as handle:
@@ -152,8 +193,10 @@ def run(
                 "evaluation_commit": evaluation_commit,
                 "orbit_count": len(orbits),
                 "intervention_count": sum(len(x.interventions) for x in orbits),
-                "author_count": len(authors),
+                "author_count": len(author_counts),
+                "author_counts": dict(sorted(author_counts.items())),
                 "source_group_counts": dict(sorted(source_groups.items())),
+                "axis_counts": dict(sorted(axis_counts.items())),
                 "input_sha256": hashlib.sha256(input_path.read_bytes()).hexdigest(),
                 "sha256": hashlib.sha256(output.read_bytes()).hexdigest(),
                 "output": str(output),
