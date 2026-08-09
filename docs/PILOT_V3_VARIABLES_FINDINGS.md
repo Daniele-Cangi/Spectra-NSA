@@ -173,3 +173,7 @@ canonicalization across paraphrases, not inventing a larger response head.
 The next locked pilot must add aliases, coreference, units, numeric equivalence, temporal ranges,
 negation scope, modality, argument reversal, and human-authored paraphrases. A successful model must
 retain the fixed-norm transfer behavior while reducing the relation-paraphrase false positives.
+
+The synthetic relation, argument-direction, scope, and modality portion of that continuation is now
+reported in [Pilot v4](PILOT_V4_FRAME_FINDINGS.md). Human-authored and unrestricted-grammar evidence
+is still outstanding.

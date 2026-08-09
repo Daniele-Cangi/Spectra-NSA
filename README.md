@@ -22,6 +22,7 @@ measurement experiment succeeds.
 - [256-orbit synthetic pilot findings](docs/PILOT_256_FINDINGS.md)
 - [task-relative pilot v2 and typed-response pivot](docs/PILOT_V2_FINDINGS.md)
 - [semantic-variable pilot v3 and fixed-aggregation result](docs/PILOT_V3_VARIABLES_FINDINGS.md)
+- [adversarial frame pilot v4 and selective-cascade result](docs/PILOT_V4_FRAME_FINDINGS.md)
 
 Read first:
 

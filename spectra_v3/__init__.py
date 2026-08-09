@@ -35,9 +35,19 @@ from .semantic_variables import (
     relational_state_from_probabilities,
     semantic_change_from_metadata,
 )
+from .frame_variables import (
+    FRAME_COORDINATE_NAMES,
+    FrameCompatibility,
+    SemanticFrame,
+    extract_semantic_frame,
+    fixed_frame_distance,
+    frame_compatibility,
+)
 
 __all__ = [
     "ExpectedRelation",
+    "FRAME_COORDINATE_NAMES",
+    "FrameCompatibility",
     "Intervention",
     "InterventionOrbit",
     "LEXICAL_STATE_NAMES",
@@ -49,6 +59,7 @@ __all__ = [
     "RELATIONAL_STATE_NAMES",
     "RelationalState",
     "SemanticAxis",
+    "SemanticFrame",
     "SemanticVariableChange",
     "VerificationStatus",
     "make_entity_intervention",
@@ -62,6 +73,9 @@ __all__ = [
     "measure_orbit",
     "measure_orbit_from_embeddings",
     "extract_orbit_features",
+    "extract_semantic_frame",
+    "fixed_frame_distance",
+    "frame_compatibility",
     "pair_response_features",
     "principal_angles",
     "relational_state_from_probabilities",

@@ -19,6 +19,7 @@ class SemanticAxis(str, Enum):
     POLARITY = "polarity"
     MODALITY = "modality"
     SCOPE = "scope"
+    DIRECTION = "direction"
 
 
 @dataclass(frozen=True)

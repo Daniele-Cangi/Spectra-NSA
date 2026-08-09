@@ -24,6 +24,10 @@ spectra-phase0-variable-pilot = "experiments.variable_pilot_corpus:main"
 spectra-phase0-variable-state = "experiments.phase0_variable_state:main"
 spectra-phase0-lexical-state = "experiments.phase0_lexical_variables:main"
 spectra-phase0-span-state = "experiments.phase0_span_canonicalizer:main"
+spectra-phase0-frame-pilot = "experiments.adversarial_frame_corpus:main"
+spectra-phase0-frame-observer = "experiments.phase0_frame_observer:main"
+spectra-phase0-frame-evaluate = "experiments.phase0_frame_evaluate:main"
+spectra-phase0-human-frame-intake = "experiments.human_frame_intake:main"
 
 [tool.setuptools.packages.find]
 include = ["experiments*", "spectra_v2*", "spectra_v3*"]
