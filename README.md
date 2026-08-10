@@ -25,7 +25,7 @@ validated**.
 | `spectra_v2` encoder core | Masking, gradients, ablations, output contracts, and mixer modes | Implemented and unit-tested |
 | Phase 0 response measurement | Deterministic intervention and measurement infrastructure | Implemented |
 | Synthetic Pilots v1-v4 | Strong development results, including a structural frame observer and selective NLI fallback | Development-only |
-| Existing human public evidence | Protocol-first evaluation on CONDAQA, PAWS-Wiki, and ANLI with pinned MiniLM/E5/NLI revisions | Stage A protocol frozen; Stage B pending |
+| Existing human public evidence | Protocol-first evaluation on CONDAQA, PAWS-Wiki, and ANLI with pinned MiniLM/E5/NLI revisions | Stage B complete: primary variable/spectrum/cascade gates not supported |
 | Natural-source mining | Real Stack Exchange text, provenance controls, deterministic filtering, and balanced seed selection | Operational pilot |
 | Human-locked evaluation | Human transformations, independent blind review, freeze, then one-shot evaluation | Frozen and untouched; not yet run |
 
@@ -131,10 +131,11 @@ spectra-existing-human-evidence audit --help
 spectra-existing-human-evidence run --help
 ```
 
-See the [existing human evidence protocol](docs/EXISTING_HUMAN_EVIDENCE_PROTOCOL.md). Its dataset
-hashes, grouping rules, features, metrics, confidence intervals, and continuation/falsification
-gates are predeclared. The CLI fails closed on paths resembling the human-locked/source-seeded
-lane.
+See the [existing human evidence protocol](docs/EXISTING_HUMAN_EVIDENCE_PROTOCOL.md) and
+[findings](docs/EXISTING_HUMAN_EVIDENCE_FINDINGS.md). Its dataset hashes, grouping rules, features,
+metrics, confidence intervals, and continuation/falsification gates were predeclared. The Stage B
+result did not support building a custom student. The CLI fails closed on paths resembling the
+human-locked/source-seeded lane.
 
 Minimal encoder use:
 
@@ -205,13 +206,14 @@ limitations, and the human handoff.
 
 1. [Research reset and verified status](docs/RESEARCH_RESET.md)
 2. [Existing human evidence protocol](docs/EXISTING_HUMAN_EVIDENCE_PROTOCOL.md)
-3. [v2 architecture](docs/V2_ARCHITECTURE.md)
-4. [v3 semantic response spectra specification](docs/V3_SEMANTIC_RESPONSE_SPECTRA.md)
-5. [Phase 0 response measurement protocol](docs/PHASE0_RESPONSE_MEASUREMENT.md)
-6. [Pilot v4 frame findings](docs/PILOT_V4_FRAME_FINDINGS.md)
-7. [Source-seeded collection protocol](docs/PILOT_V4_SOURCE_SEEDED_COLLECTION_PROTOCOL.md)
-8. [Source-mining findings](docs/PILOT_V4_SOURCE_MINING_FINDINGS.md)
-9. [Human-locked collection protocol](docs/PILOT_V4_HUMAN_COLLECTION_PROTOCOL.md)
+3. [Existing human evidence findings](docs/EXISTING_HUMAN_EVIDENCE_FINDINGS.md)
+4. [v2 architecture](docs/V2_ARCHITECTURE.md)
+5. [v3 semantic response spectra specification](docs/V3_SEMANTIC_RESPONSE_SPECTRA.md)
+6. [Phase 0 response measurement protocol](docs/PHASE0_RESPONSE_MEASUREMENT.md)
+7. [Pilot v4 frame findings](docs/PILOT_V4_FRAME_FINDINGS.md)
+8. [Source-seeded collection protocol](docs/PILOT_V4_SOURCE_SEEDED_COLLECTION_PROTOCOL.md)
+9. [Source-mining findings](docs/PILOT_V4_SOURCE_MINING_FINDINGS.md)
+10. [Human-locked collection protocol](docs/PILOT_V4_HUMAN_COLLECTION_PROTOCOL.md)
 
 Earlier pilot reports remain available in [`docs/`](docs/) as an audit trail. Later reports do not
 silently rewrite their results or frozen configurations.

@@ -1,0 +1,101 @@
+{
+  "artifacts": {
+    "configuration.json": {
+      "bytes": 1094,
+      "sha256": "30e4c501220dd2ed149c6bd38f1c80c438b629b12e50be47c56fb31dc096f831"
+    },
+    "environment.json": {
+      "bytes": 463,
+      "sha256": "dcf641b6a674eaaa22334645513bb8456dd0c39de2fb1e006a34c87a5a4b7b38"
+    },
+    "metrics.json": {
+      "bytes": 155237,
+      "sha256": "f0ab326d770769e35b6626e282a21b63e99a1ddf09d316278095094cd5a06af2"
+    },
+    "raw/e5/anli.test.jsonl": {
+      "bytes": 2666467,
+      "sha256": "27bedef15dc7b0468d74b82caaf789c9b867b9d4711eb4eab2d87b7d4017b535"
+    },
+    "raw/e5/condaqa.test.jsonl": {
+      "bytes": 6757312,
+      "sha256": "be214f4521a4480441a04f0e8f39b0ff2283b39bd4ebdf1b02c37e134094f002"
+    },
+    "raw/e5/cross-dataset-transfer.json": {
+      "bytes": 221373,
+      "sha256": "be2a5d1a9df1870e0a059a1a399baf78e4e0b0c1f15d5df2e7934aca07d73a32"
+    },
+    "raw/e5/paws_wiki.test.jsonl": {
+      "bytes": 2384581,
+      "sha256": "6a4f92e2a83e1af629ea719d3f5597332bce4c42182aae15b0927f6f3ae4faa3"
+    },
+    "raw/minilm/anli.test.jsonl": {
+      "bytes": 2667118,
+      "sha256": "5d70f5be3b1a43f2b946ddf03e0b637b57ce8b376ad9b429148365e58bf5eb75"
+    },
+    "raw/minilm/condaqa.test.jsonl": {
+      "bytes": 6753404,
+      "sha256": "7cfdde1b181062aaec29b40d39694bb6791742a59ba8b98db160088e4ccb8a14"
+    },
+    "raw/minilm/cross-dataset-transfer.json": {
+      "bytes": 221321,
+      "sha256": "c5633b438a9420e0ae00e0aa3ae96d25acd2c39327e45851437e189551696010"
+    },
+    "raw/minilm/paws_wiki.test.jsonl": {
+      "bytes": 2383115,
+      "sha256": "79730cce338d04e6193e47762b9459a9a5e01038118979c5559eef20822f0199"
+    },
+    "timing-and-calls.json": {
+      "bytes": 5808,
+      "sha256": "fc83cf22f6af7cdd7f5e0f7baa07e27580cd29649b8da2af57ef2ad11b81f1a7"
+    }
+  },
+  "created_utc": "2026-08-10T02:00:02.684210+00:00",
+  "protocol_commit": "13221c6410d2fda5e346445570cb0d46e49b0892",
+  "raw_dataset_files": {
+    "anli_v1.0.zip": {
+      "bytes": 18708061,
+      "sha256": "e5c058f2bb4e6190b0651badca2c590e45db95248f8b28cde674615ee40820bf"
+    },
+    "condaqa/dev.json": {
+      "bytes": 2130332,
+      "sha256": "b9ec9ab7453fbdc61fbed988119c03f507341ac495f1f5f95b13b27f59e639a2"
+    },
+    "condaqa/test.json": {
+      "bytes": 13839047,
+      "sha256": "ffd7f4ad85689b2317283430a226cd759c3ccc40070e6a32652e7ae84ae90e8e"
+    },
+    "condaqa/train.json": {
+      "bytes": 11054568,
+      "sha256": "f5f8a9d1b64a6c3b111b00d2e125f1d7f4da8b50acfdbc788d2901e2e43d79ec"
+    },
+    "paws/test-00000-of-00001.parquet": {
+      "bytes": 1235128,
+      "sha256": "ae342ff12bb84b84b95f468abf5db6cb7c7bd578271299fe9c99be75b8132f4d"
+    },
+    "paws/train-00000-of-00001.parquet": {
+      "bytes": 8433884,
+      "sha256": "8dc9ad3e5f30ad9a86b290fe236d528ef23a5751fec9a35d99cbacf68ba277cf"
+    },
+    "paws/validation-00000-of-00001.parquet": {
+      "bytes": 1230379,
+      "sha256": "7760d829453764ba342a6f562809a8ed21c2c3eec3fd9ffa544089f145d42f6d"
+    }
+  },
+  "sample_counts": {
+    "anli": {
+      "dev": 1000,
+      "test": 1200,
+      "train": 3000
+    },
+    "condaqa": {
+      "dev": 588,
+      "test": 1200,
+      "train": 3000
+    },
+    "paws_wiki": {
+      "dev": 1000,
+      "test": 1200,
+      "train": 3000
+    }
+  }
+}

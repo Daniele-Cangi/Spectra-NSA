@@ -1,0 +1,47 @@
+{
+  "bootstrap_replicates": 1000,
+  "datasets": [
+    "condaqa",
+    "paws_wiki",
+    "anli"
+  ],
+  "device": "cuda",
+  "encoder_batch_size": 16,
+  "encoders": {
+    "e5": {
+      "model_name": "intfloat/e5-base-v2",
+      "prefix": "query: ",
+      "revision": "f52bf8ec8c7124536f0efb74aca902b2995e5bcd"
+    },
+    "minilm": {
+      "model_name": "sentence-transformers/all-MiniLM-L6-v2",
+      "prefix": "",
+      "revision": "1110a243fdf4706b3f48f1d95db1a4f5529b4d41"
+    }
+  },
+  "max_nli_fraction": 0.4,
+  "nli": {
+    "model_name": "cross-encoder/nli-deberta-v3-small",
+    "revision": "fa2804872c3b4bd748f38c0185cc85775361e735"
+  },
+  "nli_batch_size": 16,
+  "protocol_commit": "13221c6410d2fda5e346445570cb0d46e49b0892",
+  "protocol_id": "existing-human-evidence-v1",
+  "sample_caps": {
+    "anli": {
+      "dev": 1000,
+      "test": 1200,
+      "train": 3000
+    },
+    "condaqa": {
+      "dev": 600,
+      "test": 1200,
+      "train": 3000
+    },
+    "paws_wiki": {
+      "dev": 1000,
+      "test": 1200,
+      "train": 3000
+    }
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "cuda_available": true,
+  "cuda_device": "NVIDIA GeForce RTX 2060",
+  "cuda_runtime": "13.0",
+  "packages": {
+    "numpy": "2.5.1",
+    "pyarrow": "25.0.0",
+    "scikit-learn": "1.9.0",
+    "sentence-transformers": "5.7.0",
+    "torch": "2.13.0+cu130",
+    "transformers": "5.14.1"
+  },
+  "pid": 24224,
+  "platform": "Windows-11-10.0.26200-SP0",
+  "python": "3.13.5 (tags/v3.13.5:6cb20a2, Jun 11 2025, 16:15:46) [MSC v.1943 64 bit (AMD64)]"
+}

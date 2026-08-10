@@ -1,0 +1,166 @@
+{
+  "encoders": {
+    "e5": {
+      "cache": {
+        "encoded_unique_texts": 40758,
+        "lookup_hits": 0,
+        "lookup_misses": 40758
+      },
+      "e5_prefix_policy": "query: ",
+      "model_name": "intfloat/e5-base-v2",
+      "normalize_embeddings": false,
+      "prefix": "query: ",
+      "revision": "f52bf8ec8c7124536f0efb74aca902b2995e5bcd",
+      "runtime": {
+        "batch_size": 16,
+        "cache_inference_fingerprint": "{\"batch_size\":16,\"device\":\"cuda\",\"device_name\":\"NVIDIA GeForce RTX 2060\",\"sentence_transformers\":\"5.7.0\",\"torch\":\"2.13.0+cu130\"}",
+        "cuda_available": true,
+        "cuda_device": "NVIDIA GeForce RTX 2060",
+        "cuda_runtime": "13.0",
+        "model_loaded": true,
+        "numpy": "2.5.1",
+        "platform": "Windows-11-10.0.26200-SP0",
+        "python": "3.13.5",
+        "requested_device": "cuda",
+        "resolved_device": "cuda:0",
+        "sentence_transformers": "5.7.0",
+        "tokenizer_loaded": true,
+        "torch": "2.13.0+cu130"
+      },
+      "unique_texts": 40758
+    },
+    "minilm": {
+      "cache": {
+        "encoded_unique_texts": 40758,
+        "lookup_hits": 0,
+        "lookup_misses": 40758
+      },
+      "e5_prefix_policy": null,
+      "model_name": "sentence-transformers/all-MiniLM-L6-v2",
+      "normalize_embeddings": false,
+      "prefix": "",
+      "revision": "1110a243fdf4706b3f48f1d95db1a4f5529b4d41",
+      "runtime": {
+        "batch_size": 16,
+        "cache_inference_fingerprint": "{\"batch_size\":16,\"device\":\"cuda\",\"device_name\":\"NVIDIA GeForce RTX 2060\",\"sentence_transformers\":\"5.7.0\",\"torch\":\"2.13.0+cu130\"}",
+        "cuda_available": true,
+        "cuda_device": "NVIDIA GeForce RTX 2060",
+        "cuda_runtime": "13.0",
+        "model_loaded": true,
+        "numpy": "2.5.1",
+        "platform": "Windows-11-10.0.26200-SP0",
+        "python": "3.13.5",
+        "requested_device": "cuda",
+        "resolved_device": "cuda:0",
+        "sentence_transformers": "5.7.0",
+        "tokenizer_loaded": true,
+        "torch": "2.13.0+cu130"
+      },
+      "unique_texts": 40758
+    }
+  },
+  "nli": {
+    "anli:dev": {
+      "batch_size": 16,
+      "elapsed_seconds": 10.963007000042126,
+      "entailment_index": 1,
+      "examples_per_second": 91.2158498116582,
+      "id_to_label": {
+        "0": "contradiction",
+        "1": "entailment",
+        "2": "neutral"
+      },
+      "logical_examples": 1000,
+      "model_name": "cross-encoder/nli-deberta-v3-small",
+      "model_pairs": 1000,
+      "pair_order": "bidirectional-min for PAWS/CONDAQA; premise-to-hypothesis for ANLI",
+      "revision": "fa2804872c3b4bd748f38c0185cc85775361e735"
+    },
+    "anli:test": {
+      "batch_size": 16,
+      "elapsed_seconds": 11.068640199955553,
+      "entailment_index": 1,
+      "examples_per_second": 108.41440125633669,
+      "id_to_label": {
+        "0": "contradiction",
+        "1": "entailment",
+        "2": "neutral"
+      },
+      "logical_examples": 1200,
+      "model_name": "cross-encoder/nli-deberta-v3-small",
+      "model_pairs": 1200,
+      "pair_order": "bidirectional-min for PAWS/CONDAQA; premise-to-hypothesis for ANLI",
+      "revision": "fa2804872c3b4bd748f38c0185cc85775361e735"
+    },
+    "condaqa:dev": {
+      "batch_size": 16,
+      "elapsed_seconds": 58.213743899948895,
+      "entailment_index": 1,
+      "examples_per_second": 10.10070750664288,
+      "id_to_label": {
+        "0": "contradiction",
+        "1": "entailment",
+        "2": "neutral"
+      },
+      "logical_examples": 588,
+      "model_name": "cross-encoder/nli-deberta-v3-small",
+      "model_pairs": 1176,
+      "pair_order": "bidirectional-min for PAWS/CONDAQA; premise-to-hypothesis for ANLI",
+      "revision": "fa2804872c3b4bd748f38c0185cc85775361e735"
+    },
+    "condaqa:test": {
+      "batch_size": 16,
+      "elapsed_seconds": 45.16940629994497,
+      "entailment_index": 1,
+      "examples_per_second": 26.566654253356038,
+      "id_to_label": {
+        "0": "contradiction",
+        "1": "entailment",
+        "2": "neutral"
+      },
+      "logical_examples": 1200,
+      "model_name": "cross-encoder/nli-deberta-v3-small",
+      "model_pairs": 2400,
+      "pair_order": "bidirectional-min for PAWS/CONDAQA; premise-to-hypothesis for ANLI",
+      "revision": "fa2804872c3b4bd748f38c0185cc85775361e735"
+    },
+    "paws_wiki:dev": {
+      "batch_size": 16,
+      "elapsed_seconds": 24.584170200047083,
+      "entailment_index": 1,
+      "examples_per_second": 40.67658138805453,
+      "id_to_label": {
+        "0": "contradiction",
+        "1": "entailment",
+        "2": "neutral"
+      },
+      "logical_examples": 1000,
+      "model_name": "cross-encoder/nli-deberta-v3-small",
+      "model_pairs": 2000,
+      "pair_order": "bidirectional-min for PAWS/CONDAQA; premise-to-hypothesis for ANLI",
+      "revision": "fa2804872c3b4bd748f38c0185cc85775361e735"
+    },
+    "paws_wiki:test": {
+      "batch_size": 16,
+      "elapsed_seconds": 19.854983899975196,
+      "entailment_index": 1,
+      "examples_per_second": 60.43822578982294,
+      "id_to_label": {
+        "0": "contradiction",
+        "1": "entailment",
+        "2": "neutral"
+      },
+      "logical_examples": 1200,
+      "model_name": "cross-encoder/nli-deberta-v3-small",
+      "model_pairs": 2400,
+      "pair_order": "bidirectional-min for PAWS/CONDAQA; premise-to-hypothesis for ANLI",
+      "revision": "fa2804872c3b4bd748f38c0185cc85775361e735"
+    }
+  },
+  "peak_cuda_memory_bytes": 2471651840,
+  "timings": {
+    "encoder:e5": 691.7953383999411,
+    "encoder:minilm": 537.0283328000223,
+    "total_seconds": 1484.765714899986
+  }
+}
