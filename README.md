@@ -12,12 +12,17 @@ The repository combines two related research lines:
 The project is research software. It is not a production embedding service, anomaly detector,
 or validated confidence system.
 
+The first protocol-frozen evaluation on existing human public evidence is now complete. Its
+result is mostly negative: the current semantic/frame variables do not add robust incremental
+information beyond cheap diagnostics, the spectrum has only a narrow CONDAQA high-similarity
+signal, and the selective NLI cascade misses its complete gate. **A custom Spectra student is not
+currently justified.**
+
 ## Current status
 
-The current priority is deliberately more basic than architecture work: test whether
-Spectra-style response and semantic-variable measurements add information on existing
-human-authored public data, using frozen public encoders. The central hypothesis is **not yet
-validated**.
+The public human-evidence experiment answered the current question for the implemented
+measurements. It did not support the broad semantic-variable, central-spectrum, or selective-
+cascade claims. Architecture scaling and custom-student work are therefore paused.
 
 | Layer | Current evidence | Status |
 | --- | --- | --- |
@@ -29,19 +34,53 @@ validated**.
 | Natural-source mining | Real Stack Exchange text, provenance controls, deterministic filtering, and balanced seed selection | Operational pilot |
 | Human-locked evaluation | Human transformations, independent blind review, freeze, then one-shot evaluation | Frozen and untouched; not yet run |
 
-The latest synthetic Pilot v4 result is promising, but it is not claim-eligible: one gate was
-corrected after development metrics were observed, and synthetic text cannot establish natural
-language robustness. Before collecting more locked material or building a student, the project
-now asks whether any incremental signal is visible on public human evidence. That public evidence
-is development-only and cannot replace the future locked test.
+The earlier synthetic Pilot v4 result remains development-only: one gate was corrected after
+development metrics were observed, and synthetic text cannot establish natural-language
+robustness. The later public-data experiment was protocol-first and auditable, but its negative
+result is also development evidence because pretrained models may know these public
+distributions. It does not alter or consume the separate human-locked lane.
 
-## The research question
+## Research question and answer
 
 > Given frozen public encoders and human semantic labels, do task-relative response measurements,
 > response spectra, or semantic/frame coordinates predict failures beyond cosine and cheap text
 > diagnostics?
 
-This is a hypothesis, not a result.
+For the current implementation:
+
+- cheap F1 diagnostics are useful on PAWS-Wiki and moderately useful on CONDAQA, but they combine
+  response norm with strong lexical/edit signals and do not establish a distinct Spectra effect;
+- F3 semantic/frame variables add only about `0.003` to `0.011` AUROC across the six primary
+  encoder/dataset comparisons, with every grouped confidence interval crossing zero;
+- F2 response spectrum shows a repeated high-similarity hint on CONDAQA, but no robust general or
+  cross-dataset result;
+- the frozen cascade never satisfies quality, call-budget, and routing-comparator gates together;
+- leave-one-dataset-out transfer is weak, indicating mostly task-specific signal.
+
+The appropriate interpretation is not that every idea in the repository is useless. The
+measurement and audit infrastructure works; the present semantic representation is not yet a
+general reliability signal worth distilling into a new encoder.
+
+## Research decision
+
+What remains active:
+
+- protocol-first evaluation, immutable manifests, dataset hashing, and grouped leakage controls;
+- cheap lexical/edit diagnostics as task-specific monitoring baselines;
+- one narrow research lead: response-spectrum behavior inside balanced, high-similarity human
+  intervention orbits.
+
+What is paused or demoted:
+
+- training or scaling a custom Spectra student;
+- treating the current deterministic F3 frame extractor as validated incremental signal;
+- treating response spectrum as a general central claim;
+- the current learned-ambiguity NLI routing policy;
+- new human collection until a smaller follow-up question is precise enough to justify it.
+
+Any follow-up must be a new frozen protocol. It should isolate response magnitude from
+lexical/edit features and use balanced human orbit slices with enough incompatible examples. It
+must not reinterpret or tune against the completed v1 results.
 
 ## What is implemented
 
@@ -82,20 +121,17 @@ reviewers must reconstruct the intended axis and relation without seeing model o
 
 ## Evidence boundary
 
-The repository deliberately separates development evidence from evaluation evidence:
+The repository keeps two independent evidentiary lanes:
 
 ```text
-public natural text
-        ↓
-deterministic filtering + inference-assisted seed discovery
-        ↓
-human critical / control / invariant authoring
-        ↓
-two independent blind reviews per intervention
-        ↓
-balanced intake + immutable manifest
-        ↓
-one-shot evaluation on the frozen implementation
+PUBLIC DEVELOPMENT LANE                 FUTURE HUMAN-LOCKED LANE
+CONDAQA / PAWS-Wiki / ANLI              source-seeded author bundles
+          ↓                                          ↓
+frozen public encoders                  independent human authoring/review
+          ↓                                          ↓
+protocol-first Stage A → Stage B         immutable intake → one-shot test
+          ↓                                          ↓
+completed; negative primary gates        frozen, untouched, not yet run
 ```
 
 Spectra, MiniLM, the frame observer, and NLI must not run on source seeds, author drafts, rejected
@@ -136,6 +172,11 @@ See the [existing human evidence protocol](docs/EXISTING_HUMAN_EVIDENCE_PROTOCOL
 metrics, confidence intervals, and continuation/falsification gates were predeclared. The Stage B
 result did not support building a custom student. The CLI fails closed on paths resembling the
 human-locked/source-seeded lane.
+
+The exact audit trail is split into two commits:
+
+- `13221c6`: protocol, gates, adapters, and runner frozen before metric inspection;
+- `5ca0a47`: raw per-example output, metrics, manifest, findings, and execution metadata.
 
 Minimal encoder use:
 
