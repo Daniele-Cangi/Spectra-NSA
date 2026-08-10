@@ -14,8 +14,10 @@ or validated confidence system.
 
 ## Current status
 
-The code has moved beyond the original research reset, but the central hypothesis is **not yet
-validated on locked human data**.
+The current priority is deliberately more basic than architecture work: test whether
+Spectra-style response and semantic-variable measurements add information on existing
+human-authored public data, using frozen public encoders. The central hypothesis is **not yet
+validated**.
 
 | Layer | Current evidence | Status |
 | --- | --- | --- |
@@ -23,19 +25,21 @@ validated on locked human data**.
 | `spectra_v2` encoder core | Masking, gradients, ablations, output contracts, and mixer modes | Implemented and unit-tested |
 | Phase 0 response measurement | Deterministic intervention and measurement infrastructure | Implemented |
 | Synthetic Pilots v1-v4 | Strong development results, including a structural frame observer and selective NLI fallback | Development-only |
+| Existing human public evidence | Protocol-first evaluation on CONDAQA, PAWS-Wiki, and ANLI with pinned MiniLM/E5/NLI revisions | Stage A protocol frozen; Stage B pending |
 | Natural-source mining | Real Stack Exchange text, provenance controls, deterministic filtering, and balanced seed selection | Operational pilot |
-| Human-locked evaluation | Human transformations, independent blind review, freeze, then one-shot evaluation | Not yet run |
+| Human-locked evaluation | Human transformations, independent blind review, freeze, then one-shot evaluation | Frozen and untouched; not yet run |
 
 The latest synthetic Pilot v4 result is promising, but it is not claim-eligible: one gate was
 corrected after development metrics were observed, and synthetic text cannot establish natural
-language robustness. The next evidentiary boundary is therefore a genuinely human-authored,
-source-grounded locked set.
+language robustness. Before collecting more locked material or building a student, the project
+now asks whether any incremental signal is visible on public human evidence. That public evidence
+is development-only and cannot replace the future locked test.
 
 ## The research question
 
-> At matched parameter, data, and update budgets, do heterogeneous semantic and Fourier token
-> mixers produce complementary embedding views, and can task-relative response to controlled
-> semantic interventions expose failures that a single embedding distance misses?
+> Given frozen public encoders and human semantic labels, do task-relative response measurements,
+> response spectra, or semantic/frame coordinates predict failures beyond cosine and cheap text
+> diagnostics?
 
 This is a hypothesis, not a result.
 
@@ -113,6 +117,25 @@ Install the optional Phase 0 model dependencies with:
 python -m pip install -e ".[dev,phase0]"
 ```
 
+Install the public human-evidence evaluation dependencies with:
+
+```bash
+python -m pip install -e ".[dev,human-evidence]"
+```
+
+The protocol and structural dataset audit are frozen before model evaluation. The Stage B runner
+requires a clean checkout and an explicit immutable protocol commit:
+
+```bash
+spectra-existing-human-evidence audit --help
+spectra-existing-human-evidence run --help
+```
+
+See the [existing human evidence protocol](docs/EXISTING_HUMAN_EVIDENCE_PROTOCOL.md). Its dataset
+hashes, grouping rules, features, metrics, confidence intervals, and continuation/falsification
+gates are predeclared. The CLI fails closed on paths resembling the human-locked/source-seeded
+lane.
+
 Minimal encoder use:
 
 ```python
@@ -181,13 +204,14 @@ limitations, and the human handoff.
 ## Read in order
 
 1. [Research reset and verified status](docs/RESEARCH_RESET.md)
-2. [v2 architecture](docs/V2_ARCHITECTURE.md)
-3. [v3 semantic response spectra specification](docs/V3_SEMANTIC_RESPONSE_SPECTRA.md)
-4. [Phase 0 response measurement protocol](docs/PHASE0_RESPONSE_MEASUREMENT.md)
-5. [Pilot v4 frame findings](docs/PILOT_V4_FRAME_FINDINGS.md)
-6. [Source-seeded collection protocol](docs/PILOT_V4_SOURCE_SEEDED_COLLECTION_PROTOCOL.md)
-7. [Source-mining findings](docs/PILOT_V4_SOURCE_MINING_FINDINGS.md)
-8. [Human-locked collection protocol](docs/PILOT_V4_HUMAN_COLLECTION_PROTOCOL.md)
+2. [Existing human evidence protocol](docs/EXISTING_HUMAN_EVIDENCE_PROTOCOL.md)
+3. [v2 architecture](docs/V2_ARCHITECTURE.md)
+4. [v3 semantic response spectra specification](docs/V3_SEMANTIC_RESPONSE_SPECTRA.md)
+5. [Phase 0 response measurement protocol](docs/PHASE0_RESPONSE_MEASUREMENT.md)
+6. [Pilot v4 frame findings](docs/PILOT_V4_FRAME_FINDINGS.md)
+7. [Source-seeded collection protocol](docs/PILOT_V4_SOURCE_SEEDED_COLLECTION_PROTOCOL.md)
+8. [Source-mining findings](docs/PILOT_V4_SOURCE_MINING_FINDINGS.md)
+9. [Human-locked collection protocol](docs/PILOT_V4_HUMAN_COLLECTION_PROTOCOL.md)
 
 Earlier pilot reports remain available in [`docs/`](docs/) as an audit trail. Later reports do not
 silently rewrite their results or frozen configurations.

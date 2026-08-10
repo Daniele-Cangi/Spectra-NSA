@@ -12,6 +12,12 @@ dependencies = ["numpy>=1.24", "torch>=2.0"]
 [project.optional-dependencies]
 dev = ["flake8>=7.0", "pytest>=7.0"]
 phase0 = ["sentence-transformers>=3.0"]
+human-evidence = [
+    "pyarrow>=15",
+    "scikit-learn>=1.4",
+    "scipy>=1.10",
+    "sentence-transformers>=3.0",
+]
 
 [project.scripts]
 spectra-phase0 = "experiments.phase0_measure_response:main"
@@ -30,6 +36,7 @@ spectra-phase0-frame-evaluate = "experiments.phase0_frame_evaluate:main"
 spectra-phase0-human-frame-intake = "experiments.human_frame_intake:main"
 spectra-phase0-human-frame-collection = "experiments.human_frame_collection:main"
 spectra-phase0-source-mine = "experiments.source_mining:main"
+spectra-existing-human-evidence = "experiments.existing_human_evidence:main"
 
 [tool.setuptools.packages.find]
 include = ["experiments*", "spectra_v2*", "spectra_v3*"]

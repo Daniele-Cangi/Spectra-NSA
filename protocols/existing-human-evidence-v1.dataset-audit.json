@@ -1,0 +1,181 @@
+{
+  "created_utc": "2026-08-10T01:25:34.514719+00:00",
+  "datasets": {
+    "anli": {
+      "after_group_purge": {
+        "group_overlap": {
+          "dev__test": 0,
+          "dev__train": 0,
+          "test__train": 0
+        },
+        "groups": {
+          "dev": 2197,
+          "test": 2854,
+          "train": 5710
+        },
+        "records": {
+          "dev": 2489,
+          "test": 3200,
+          "train": 93480
+        }
+      },
+      "group_overlap": {
+        "dev__test": 645,
+        "dev__train": 2809,
+        "test__train": 2828
+      },
+      "groups": {
+        "dev": 2842,
+        "test": 2854,
+        "train": 10721
+      },
+      "labels": {
+        "dev": {
+          "0": 2130,
+          "1": 1070
+        },
+        "test": {
+          "0": 2130,
+          "1": 1070
+        },
+        "train": {
+          "0": 110754,
+          "1": 52111
+        }
+      },
+      "records": {
+        "dev": 3200,
+        "test": 3200,
+        "train": 162865
+      }
+    },
+    "condaqa": {
+      "after_group_purge": {
+        "group_overlap": {
+          "dev__test": 0,
+          "dev__train": 0,
+          "test__train": 0
+        },
+        "groups": {
+          "dev": 196,
+          "test": 1402,
+          "train": 1458
+        },
+        "records": {
+          "dev": 588,
+          "test": 4206,
+          "train": 4374
+        }
+      },
+      "group_overlap": {
+        "dev__test": 0,
+        "dev__train": 0,
+        "test__train": 0
+      },
+      "groups": {
+        "dev": 196,
+        "test": 1402,
+        "train": 1458
+      },
+      "labels": {
+        "dev": {
+          "0": 285,
+          "1": 303
+        },
+        "test": {
+          "0": 2075,
+          "1": 2131
+        },
+        "train": {
+          "0": 2182,
+          "1": 2192
+        }
+      },
+      "records": {
+        "dev": 588,
+        "test": 4206,
+        "train": 4374
+      }
+    },
+    "paws_wiki": {
+      "after_group_purge": {
+        "group_overlap": {
+          "dev__test": 0,
+          "dev__train": 0,
+          "test__train": 0
+        },
+        "groups": {
+          "dev": 7983,
+          "test": 7972,
+          "train": 49289
+        },
+        "records": {
+          "dev": 8000,
+          "test": 8000,
+          "train": 49401
+        }
+      },
+      "group_overlap": {
+        "dev__test": 0,
+        "dev__train": 0,
+        "test__train": 0
+      },
+      "groups": {
+        "dev": 7983,
+        "test": 7972,
+        "train": 49289
+      },
+      "labels": {
+        "dev": {
+          "0": 4461,
+          "1": 3539
+        },
+        "test": {
+          "0": 4464,
+          "1": 3536
+        },
+        "train": {
+          "0": 27572,
+          "1": 21829
+        }
+      },
+      "records": {
+        "dev": 8000,
+        "test": 8000,
+        "train": 49401
+      }
+    }
+  },
+  "files": {
+    "anli_v1.0.zip": {
+      "bytes": 18708061,
+      "sha256": "e5c058f2bb4e6190b0651badca2c590e45db95248f8b28cde674615ee40820bf"
+    },
+    "condaqa/dev.json": {
+      "bytes": 2130332,
+      "sha256": "b9ec9ab7453fbdc61fbed988119c03f507341ac495f1f5f95b13b27f59e639a2"
+    },
+    "condaqa/test.json": {
+      "bytes": 13839047,
+      "sha256": "ffd7f4ad85689b2317283430a226cd759c3ccc40070e6a32652e7ae84ae90e8e"
+    },
+    "condaqa/train.json": {
+      "bytes": 11054568,
+      "sha256": "f5f8a9d1b64a6c3b111b00d2e125f1d7f4da8b50acfdbc788d2901e2e43d79ec"
+    },
+    "paws/test-00000-of-00001.parquet": {
+      "bytes": 1235128,
+      "sha256": "ae342ff12bb84b84b95f468abf5db6cb7c7bd578271299fe9c99be75b8132f4d"
+    },
+    "paws/train-00000-of-00001.parquet": {
+      "bytes": 8433884,
+      "sha256": "8dc9ad3e5f30ad9a86b290fe236d528ef23a5751fec9a35d99cbacf68ba277cf"
+    },
+    "paws/validation-00000-of-00001.parquet": {
+      "bytes": 1230379,
+      "sha256": "7760d829453764ba342a6f562809a8ed21c2c3eec3fd9ffa544089f145d42f6d"
+    }
+  },
+  "protocol_id": "existing-human-evidence-v1",
+  "scope": "structural audit only; no encoder or final metric was run"
+}

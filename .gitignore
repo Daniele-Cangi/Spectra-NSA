@@ -42,6 +42,7 @@ checkpoints_custom/
 *.ckpt
 outputs/
 runs/
+results/**/cache/
 
 # Data
 *.csv
