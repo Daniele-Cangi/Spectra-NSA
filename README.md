@@ -82,6 +82,32 @@ Any follow-up must be a new frozen protocol. It should isolate response magnitud
 lexical/edit features and use balanced human orbit slices with enough incompatible examples. It
 must not reinterpret or tune against the completed v1 results.
 
+## Open research questions
+
+Spectra is open to **methodological comparison and falsification**, not feature expansion for its
+own sake. Contributions are especially useful when they bring a different way of attacking a
+failure already exposed by the frozen evidence.
+
+Current questions include:
+
+- **Response vs. confounds:** how can local response geometry be isolated from lexical overlap,
+  edit distance, negation, length, and other cheap signals that already explain much of the public
+  benchmark performance?
+- **High-similarity lead:** does the narrow response-spectrum signal seen on CONDAQA survive an
+  independently designed, balanced high-similarity evaluation, or is it dataset-specific?
+- **Selective prediction:** which defer/routing/uncertainty/selective-prediction baselines should be
+  compared before another cheap-to-NLI cascade is designed?
+- **Representation choice:** is a singular spectrum of controlled responses the right object, or
+  would gradients, Jacobians, local subspaces, counterfactual geometry, contrast sets, nearest-
+  neighbor evidence, or another representation expose semantic sensitivity more directly?
+
+Relevant prior work, alternative formulations, small discriminating experiments, replications,
+and negative results are welcome. Code is not required for a useful issue.
+
+See [`.github/CONTRIBUTING.md`](.github/CONTRIBUTING.md) before proposing experiments. The completed
+public result must not be retuned or rewritten, and the human-locked lane is not available for
+exploratory method development.
+
 ## What is implemented
 
 ### Compact v2 encoder
